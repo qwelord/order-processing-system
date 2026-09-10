@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using OrderService.DataAccess;
+using Refit;
+using OrderService.WebApi.Clients;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,6 +11,10 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddDbContext<OrderDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
+builder.Services.AddRefitClient<IPaymentClient>()
+    .ConfigureHttpClient(c => c.BaseAddress = new Uri("http://localhost:5002"));
 
 var app = builder.Build();
 

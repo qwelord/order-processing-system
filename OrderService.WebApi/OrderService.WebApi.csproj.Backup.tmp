@@ -16,11 +16,12 @@
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.0" />
+		<PackageReference Include="Refit.HttpClientFactory" Version="15.2.0" />
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\PaymentService.DataAccess\PaymentService.DataAccess.csproj" />
+		<ProjectReference Include="..\OrderService.DataAccess\OrderService.DataAccess.csproj" />
 	</ItemGroup>
 
 </Project>
