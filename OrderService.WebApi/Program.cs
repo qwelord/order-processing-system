@@ -1,20 +1,42 @@
+using FluentValidation;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OrderService.DataAccess;
-using Refit;
 using OrderService.WebApi.Clients;
+using OrderService.WebApi.Filters;
+using OrderService.WebApi.PipelineBehaviors;
+using OrderService.WebApi.Validators;
+using Refit;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<ValidationExceptionFilter>();
+});
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddDbContext<OrderDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
-builder.Services.AddRefitClient<IPaymentClient>()
-    .ConfigureHttpClient(c => c.BaseAddress = new Uri("http://localhost:5002"));
+builder.Services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
+    cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+});
+
+builder.Services.AddValidatorsFromAssemblyContaining<CreateOrderDtoValidator>();
+builder.Services.AddAutoMapper(typeof(Program).Assembly);
+
+var paymentServiceUrl = builder.Configuration["PaymentService:BaseUrl"];
+builder.Services.AddHttpClient("PaymentClient", c => c.BaseAddress = new Uri(paymentServiceUrl!));
+builder.Services.AddTransient(sp =>
+{
+    var client = sp.GetRequiredService<IHttpClientFactory>().CreateClient("PaymentClient");
+    return RestService.For<IPaymentClient>(client);
+});
 
 var app = builder.Build();
 
@@ -26,4 +48,5 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthorization();
 app.MapControllers();
+
 app.Run();

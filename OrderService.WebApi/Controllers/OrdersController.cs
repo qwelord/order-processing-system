@@ -1,9 +1,9 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using OrderService.WebApi.Clients;
-using OrderService.WebApi.Commands;
 using OrderService.WebApi.DTOs;
-using OrderService.WebApi.Queries;
+using OrderService.WebApi.UseCases.Commands;
+using OrderService.WebApi.UseCases.Queries;
 
 namespace OrderService.WebApi.Controllers;
 

@@ -23,4 +23,8 @@
 		<ProjectReference Include="..\PaymentService.DataAccess\PaymentService.DataAccess.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Folder Include="UseCases\Queries\" />
+	</ItemGroup>
+
 </Project>

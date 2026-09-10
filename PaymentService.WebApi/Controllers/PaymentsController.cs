@@ -1,7 +1,7 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using PaymentService.WebApi.Commands;
 using PaymentService.WebApi.DTOs;
+using PaymentService.WebApi.UseCases.Commands;
 
 namespace PaymentService.WebApi.Controllers;
 
