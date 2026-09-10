@@ -1,0 +1,56 @@
+﻿{
+"info": {
+"name": "Order Processing Microservices",
+"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+},
+"item": [
+{
+"name": "Create Order (Full E2E Flow)",
+"request": {
+"method": "POST",
+"header": [
+{
+"key": "Content-Type",
+"value": "application/json"
+}
+],
+"body": {
+"mode": "raw",
+"raw": "{\n  \"customerName\": \"Алексей\",\n  \"totalAmount\": 1500\n}"
+},
+"url": {
+"raw": "http://localhost:5001/api/Orders",
+"protocol": "http",
+"host": [
+"localhost"
+],
+"port": "5001",
+"path": [
+"api",
+"Orders"
+]
+}
+}
+},
+{
+"name": "Get Order By ID",
+"request": {
+"method": "GET",
+"header": [],
+"url": {
+"raw": "http://localhost:5001/api/Orders/YOUR_ORDER_ID_HERE",
+"protocol": "http",
+"host": [
+"localhost"
+],
+"port": "5001",
+"path": [
+"api",
+"Orders",
+"YOUR_ORDER_ID_HERE"
+]
+}
+}
+}
+]
+}

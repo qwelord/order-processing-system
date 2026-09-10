@@ -27,17 +27,21 @@ public class KafkaConsumerService : BackgroundService
     {
         await Task.Yield();
 
+        var bootstrapServers = _configuration["Kafka:BootstrapServers"] ?? "kafka:9092";
+
         var config = new ConsumerConfig
         {
-            BootstrapServers = _configuration["Kafka:BootstrapServers"] ?? "localhost:9092",
+            BootstrapServers = bootstrapServers,
             GroupId = "notification-service-group",
             AutoOffsetReset = AutoOffsetReset.Earliest,
             EnableAutoCommit = false,
             EnablePartitionEof = false
         };
 
+        _logger.LogInformation("Kafka Consumer initializing with BootstrapServers: {BootstrapServers}", bootstrapServers);
+
         using var consumer = new ConsumerBuilder<string, string>(config)
-            .SetErrorHandler((_, error) => _logger.LogError("Kafka Consumer Error: {Reason}", error.Reason))
+            .SetErrorHandler((_, error) => _logger.LogError("Kafka Consumer Error: {Reason} (Code: {Code})", error.Reason, error.Code))
             .Build();
 
         consumer.Subscribe(_topic);

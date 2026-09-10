@@ -16,8 +16,17 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddSignalR();
 builder.Services.AddHostedService<KafkaConsumerService>();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Notification API v1");
+    c.RoutePrefix = "swagger";
+});
 
 app.UseCors("AllowAll");
 app.UseDefaultFiles();
