@@ -8,37 +8,60 @@ public interface IKafkaProducerService
     Task PublishPaymentCompletedAsync(Guid orderId, Guid paymentId, decimal amount);
 }
 
-public class KafkaProducerService : IKafkaProducerService
+public class KafkaProducerService : IKafkaProducerService, IDisposable
 {
     private readonly IProducer<string, string> _producer;
-    private readonly string _topic = "payment-events";
+    private readonly string _topic;
+    private readonly ILogger<KafkaProducerService> _logger;
 
-    public KafkaProducerService(IConfiguration configuration)
+    public KafkaProducerService(IConfiguration configuration, ILogger<KafkaProducerService> logger)
     {
+        _logger = logger;
+        _topic = configuration["Kafka:Topic"] ?? "payment-events";
+
         var config = new ProducerConfig
         {
-            BootstrapServers = configuration["Kafka:BootstrapServers"] ?? "localhost:9092"
+            BootstrapServers = configuration["Kafka:BootstrapServers"] ?? "localhost:9092",
+            Acks = Acks.All,
+            MessageSendMaxRetries = 3,
+            RetryBackoffMs = 1000,
+            EnableDeliveryReports = true,
+            ClientId = "PaymentService-Producer"
         };
-        _producer = new ProducerBuilder<string, string>(config).Build();
+
+        _producer = new ProducerBuilder<string, string>(config)
+            .SetErrorHandler((_, error) => _logger.LogError("Kafka Producer Error: {Reason}", error.Reason))
+            .Build();
     }
 
     public async Task PublishPaymentCompletedAsync(Guid orderId, Guid paymentId, decimal amount)
     {
-        var message = new
-        {
-            OrderId = orderId,
-            PaymentId = paymentId,
-            Amount = amount,
-            Status = "Completed",
-            Timestamp = DateTime.UtcNow
-        };
+        var eventMessage = new PaymentCompletedEvent(orderId, paymentId, amount, "Completed", DateTime.UtcNow);
+        var jsonPayload = JsonSerializer.Serialize(eventMessage);
 
-        var json = JsonSerializer.Serialize(message);
-
-        await _producer.ProduceAsync(_topic, new Message<string, string>
+        try
         {
-            Key = orderId.ToString(),
-            Value = json
-        });
+            var result = await _producer.ProduceAsync(_topic, new Message<string, string>
+            {
+                Key = orderId.ToString(),
+                Value = jsonPayload
+            });
+
+            _logger.LogInformation("Event published to Kafka topic {Topic}, partition {Partition}, offset {Offset}",
+                result.Topic, result.Partition.Value, result.Offset.Value);
+        }
+        catch (ProduceException<string, string> ex)
+        {
+            _logger.LogError(ex, "Failed to deliver event to Kafka: {Reason}", ex.Error.Reason);
+            throw;
+        }
+    }
+
+    public void Dispose()
+    {
+        _producer?.Flush(TimeSpan.FromSeconds(10));
+        _producer?.Dispose();
     }
 }
+
+public record PaymentCompletedEvent(Guid OrderId, Guid PaymentId, decimal Amount, string Status, DateTime Timestamp);

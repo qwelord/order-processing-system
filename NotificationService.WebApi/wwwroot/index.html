@@ -1,0 +1,92 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Order Processing System - Notifications</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background-color: #f4f6f9;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .status {
+            padding: 8px 12px;
+            border-radius: 4px;
+            display: inline-block;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .online {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .offline {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        li {
+            background: #e9ecef;
+            margin-bottom: 10px;
+            padding: 12px;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Мониторинг уведомлений (SignalR)</h2>
+        <div id="status" class="status offline">Подключение...</div>
+        <h3>Полученные события:</h3>
+        <ul id="messagesList"></ul>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+    <script>
+        const statusDiv = document.getElementById('status');
+        const messagesList = document.getElementById('messagesList');
+
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/notifications")
+            .withAutomaticReconnect()
+            .build();
+
+        connection.on("ReceivePaymentUpdate", (data) => {
+            const li = document.createElement('li');
+            li.innerHTML = `<strong>Заказ:</strong> ${data.orderId}<br>
+                            <strong>Платеж:</strong> ${data.paymentId}<br>
+                            <strong>Сумма:</strong> $${data.amount}<br>
+                            <strong>Статус:</strong> ${data.status}`;
+            messagesList.prepend(li);
+        });
+
+        connection.start()
+            .then(() => {
+                statusDiv.textContent = "● Подключено к SignalR Hub";
+                statusDiv.className = "status online";
+            })
+            .catch(err => {
+                statusDiv.textContent = "✕ Ошибка подключения";
+                statusDiv.className = "status offline";
+            });
+    </script>
+</body>
+</html>

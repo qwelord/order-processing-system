@@ -1,52 +1,85 @@
 ﻿using Confluent.Kafka;
 using Microsoft.AspNetCore.SignalR;
 using NotificationService.WebApi.Hubs;
+using System.Text.Json;
 
 namespace NotificationService.WebApi.Services;
 
 public class KafkaConsumerService : BackgroundService
 {
-    private readonly IHubContext<NotificationHub> _hubContext;
+    private readonly IHubContext<NotificationHub, INotificationClient> _hubContext;
     private readonly IConfiguration _configuration;
+    private readonly ILogger<KafkaConsumerService> _logger;
+    private readonly string _topic;
 
-    public KafkaConsumerService(IHubContext<NotificationHub> hubContext, IConfiguration configuration)
+    public KafkaConsumerService(
+        IHubContext<NotificationHub, INotificationClient> hubContext,
+        IConfiguration configuration,
+        ILogger<KafkaConsumerService> logger)
     {
         _hubContext = hubContext;
         _configuration = configuration;
+        _logger = logger;
+        _topic = _configuration["Kafka:Topic"] ?? "payment-events";
     }
 
-    protected override Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        Task.Run(() => StartConsumer(stoppingToken), stoppingToken);
-        return Task.CompletedTask;
-    }
+        await Task.Yield();
 
-    private async Task StartConsumer(CancellationToken stoppingToken)
-    {
         var config = new ConsumerConfig
         {
             BootstrapServers = _configuration["Kafka:BootstrapServers"] ?? "localhost:9092",
-            GroupId = "notification-group",
-            AutoOffsetReset = AutoOffsetReset.Earliest
+            GroupId = "notification-service-group",
+            AutoOffsetReset = AutoOffsetReset.Earliest,
+            EnableAutoCommit = false,
+            EnablePartitionEof = false
         };
 
-        using var consumer = new ConsumerBuilder<string, string>(config).Build();
-        consumer.Subscribe("payment-events");
+        using var consumer = new ConsumerBuilder<string, string>(config)
+            .SetErrorHandler((_, error) => _logger.LogError("Kafka Consumer Error: {Reason}", error.Reason))
+            .Build();
+
+        consumer.Subscribe(_topic);
+        _logger.LogInformation("Kafka Consumer subscribed to topic: {Topic}", _topic);
 
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                var result = consumer.Consume(stoppingToken);
-                if (result != null)
+                var consumeResult = consumer.Consume(stoppingToken);
+
+                if (consumeResult?.Message == null) continue;
+
+                _logger.LogInformation("Consumed message with Key: {Key} from Partition: {Partition}",
+                    consumeResult.Message.Key, consumeResult.Partition.Value);
+
+                var notification = JsonSerializer.Deserialize<PaymentNotificationContract>(
+                    consumeResult.Message.Value,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                if (notification != null)
                 {
-                    await _hubContext.Clients.All.SendAsync("ReceivePaymentUpdate", result.Message.Value, cancellationToken: stoppingToken);
+                    await _hubContext.Clients.All.ReceivePaymentUpdate(notification);
                 }
+
+                consumer.Commit(consumeResult);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            catch (ConsumeException ex)
+            {
+                _logger.LogError(ex, "Error occurred while consuming Kafka message: {Reason}", ex.Error.Reason);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Kafka consumer error: {ex.Message}");
+                _logger.LogError(ex, "Unexpected error processing Kafka event");
             }
         }
+
+        consumer.Close();
+        _logger.LogInformation("Kafka Consumer connection closed gracefully.");
     }
 }

@@ -20,6 +20,8 @@ builder.Services.AddHostedService<KafkaConsumerService>();
 var app = builder.Build();
 
 app.UseCors("AllowAll");
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
 app.MapHub<NotificationHub>("/notifications");
 

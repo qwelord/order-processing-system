@@ -1,6 +1,7 @@
 <Solution>
   <Project Path="NotificationService.WebApi/NotificationService.WebApi.csproj" />
   <Project Path="OrderService.DataAccess/OrderService.DataAccess.csproj" />
+  <Project Path="OrderService.Tests/OrderService.Tests.csproj" />
   <Project Path="OrderService.WebApi/OrderService.WebApi.csproj" />
   <Project Path="PaymentService.DataAccess/PaymentService.DataAccess.csproj" />
   <Project Path="PaymentService.WebApi/PaymentService.WebApi.csproj" />

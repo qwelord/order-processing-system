@@ -2,10 +2,10 @@
 
 namespace NotificationService.WebApi.Hubs;
 
-public class NotificationHub : Hub
+public class NotificationHub : Hub<INotificationClient>
 {
-    public async Task SendPaymentNotification(string message)
+    public override async Task OnConnectedAsync()
     {
-        await Clients.All.SendAsync("ReceivePaymentUpdate", message);
+        await base.OnConnectedAsync();
     }
 }
