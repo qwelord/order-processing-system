@@ -1,10 +1,9 @@
-﻿using Confluent.Kafka;
+using Confluent.Kafka;
 
 namespace PaymentService.WebApi.Services;
 
 public interface IKafkaProducerService
 {
-    Task PublishPaymentCompletedAsync(Guid orderId, Guid paymentId, decimal amount);
     Task PublishRawMessageAsync(string eventType, string jsonPayload);
 }
 
@@ -26,46 +25,41 @@ public class KafkaProducerService : IKafkaProducerService, IDisposable
             MessageSendMaxRetries = 3,
             RetryBackoffMs = 1000,
             EnableDeliveryReports = true,
-            ClientId = "PaymentService-Producer"
+            ClientId = "payment-service"
         };
 
         _producer = new ProducerBuilder<string, string>(config)
-            .SetErrorHandler((_, error) => _logger.LogError("Kafka Producer Error: {Reason}", error.Reason))
+            .SetErrorHandler((_, error) => _logger.LogError("Kafka producer error: {Reason}", error.Reason))
             .Build();
-    }
-
-    public async Task PublishPaymentCompletedAsync(Guid orderId, Guid paymentId, decimal amount)
-    {
-        var eventMessage = new PaymentCompletedEvent(orderId, paymentId, amount, "Completed", DateTime.UtcNow);
-        var jsonPayload = System.Text.Json.JsonSerializer.Serialize(eventMessage);
-        await PublishRawMessageAsync(nameof(PaymentCompletedEvent), jsonPayload);
     }
 
     public async Task PublishRawMessageAsync(string eventType, string jsonPayload)
     {
         try
         {
-            var result = await _producer.ProduceAsync(_topic, new Message<string, string>
+            await _producer.ProduceAsync(_topic, new Message<string, string>
             {
-                Key = Guid.NewGuid().ToString(),
+                Key = eventType,
                 Value = jsonPayload
             });
-
-            _logger.LogInformation("Event published to Kafka topic {Topic}, partition {Partition}, offset {Offset}",
-                result.Topic, result.Partition.Value, result.Offset.Value);
         }
         catch (ProduceException<string, string> ex)
         {
-            _logger.LogError(ex, "Failed to deliver event to Kafka: {Reason}", ex.Error.Reason);
+            _logger.LogError(ex, "Failed to publish {EventType} to {Topic}", eventType, _topic);
             throw;
         }
     }
 
     public void Dispose()
     {
-        _producer?.Flush(TimeSpan.FromSeconds(10));
-        _producer?.Dispose();
+        _producer.Flush(TimeSpan.FromSeconds(10));
+        _producer.Dispose();
     }
 }
 
-public record PaymentCompletedEvent(Guid OrderId, Guid PaymentId, decimal Amount, string Status, DateTime Timestamp);
+public record PaymentProcessedEvent(
+    Guid OrderId,
+    Guid PaymentId,
+    decimal Amount,
+    string Status,
+    DateTime Timestamp);

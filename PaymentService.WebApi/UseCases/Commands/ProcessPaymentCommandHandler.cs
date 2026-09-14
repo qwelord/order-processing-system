@@ -1,11 +1,12 @@
 using FluentValidation;
 using FluentValidation.Results;
-using System.Text.Json;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using PaymentService.DataAccess;
 using PaymentService.DataAccess.Entities;
 using PaymentService.WebApi.DTOs;
 using PaymentService.WebApi.Services;
+using System.Text.Json;
 
 namespace PaymentService.WebApi.UseCases.Commands;
 
@@ -22,57 +23,82 @@ public class ProcessPaymentCommandHandler : IRequestHandler<ProcessPaymentComman
 
     public async Task<PaymentResponseDto> Handle(ProcessPaymentCommand request, CancellationToken cancellationToken)
     {
-        if (request.PaymentDto.Amount <= 0)
-            throw new ValidationException(new[] { new ValidationFailure("Amount", "Payment amount must be positive.") });
+        var dto = request.PaymentDto;
 
-        if (request.PaymentDto.PaymentMethod is not ("Card" or "CashOnDelivery"))
-            throw new ValidationException(new[] { new ValidationFailure("PaymentMethod", "Unsupported payment method.") });
+        if (dto.Amount <= 0)
+            throw new ValidationException(new[]
+            {
+                new ValidationFailure("Amount", "Payment amount must be positive.")
+            });
+
+        if (dto.PaymentMethod is not ("Card" or "CashOnDelivery"))
+            throw new ValidationException(new[]
+            {
+                new ValidationFailure("PaymentMethod", "Unsupported payment method.")
+            });
+
+        var existingPayment = await _db.Payments
+            .AsNoTracking()
+            .SingleOrDefaultAsync(payment => payment.OrderId == dto.OrderId, cancellationToken);
+
+        if (existingPayment is not null)
+        {
+            if (existingPayment.Amount != dto.Amount || existingPayment.PaymentMethod != dto.PaymentMethod)
+            {
+                throw new ValidationException(new[]
+                {
+                    new ValidationFailure("OrderId", "A different payment already exists for this order.")
+                });
+            }
+
+            return ToResponse(existingPayment);
+        }
 
         var payment = new Payment
         {
             Id = Guid.NewGuid(),
-            OrderId = request.PaymentDto.OrderId,
-            Amount = request.PaymentDto.Amount,
-            PaymentMethod = request.PaymentDto.PaymentMethod,
-            CardLast4 = request.PaymentDto.PaymentMethod == "Card" ? request.PaymentDto.CardLast4 : null,
+            OrderId = dto.OrderId,
+            Amount = dto.Amount,
+            PaymentMethod = dto.PaymentMethod,
+            CardLast4 = dto.PaymentMethod == "Card" ? dto.CardLast4 : null,
             ProcessedAt = DateTime.UtcNow
         };
 
-        if (payment.PaymentMethod == "Card")
-        {
-            if (string.IsNullOrWhiteSpace(payment.CardLast4) || payment.CardLast4.Length != 4 || !payment.CardLast4.All(char.IsDigit))
-                throw new ValidationException(new[] { new ValidationFailure("CardLast4", "Card payment requires four digits from the card number.") });
-
-            payment.Status = payment.CardLast4 == "0000" ? PaymentStatus.Failed : PaymentStatus.Completed;
-        }
-        else
-        {
-            payment.Status = PaymentStatus.Pending;
-        }
+        payment.Status = dto.PaymentMethod == "Card"
+            ? dto.CardLast4 == "0000" ? PaymentStatus.Failed : PaymentStatus.Completed
+            : PaymentStatus.Pending;
 
         _db.Payments.Add(payment);
-
-        if (payment.Status == PaymentStatus.Completed)
-        {
-            var eventMessage = new PaymentCompletedEvent(payment.OrderId, payment.Id, payment.Amount, "Completed", payment.ProcessedAt);
-            _db.OutboxMessages.Add(new OutboxMessage
-            {
-                Id = Guid.NewGuid(),
-                Type = nameof(PaymentCompletedEvent),
-                Content = JsonSerializer.Serialize(eventMessage),
-                CreatedAt = DateTime.UtcNow
-            });
-        }
-
+        AddOutboxMessage(payment);
         await _db.SaveChangesAsync(cancellationToken);
 
-        return new PaymentResponseDto(
-            payment.Id,
+        return ToResponse(payment);
+    }
+
+    private void AddOutboxMessage(Payment payment)
+    {
+        var message = new PaymentProcessedEvent(
             payment.OrderId,
+            payment.Id,
             payment.Amount,
             payment.Status.ToString(),
-            payment.PaymentMethod,
-            payment.CardLast4,
             payment.ProcessedAt);
+
+        _db.OutboxMessages.Add(new OutboxMessage
+        {
+            Id = Guid.NewGuid(),
+            Type = nameof(PaymentProcessedEvent),
+            Content = JsonSerializer.Serialize(message),
+            CreatedAt = DateTime.UtcNow
+        });
     }
+
+    private static PaymentResponseDto ToResponse(Payment payment) => new(
+        payment.Id,
+        payment.OrderId,
+        payment.Amount,
+        payment.Status.ToString(),
+        payment.PaymentMethod,
+        payment.CardLast4,
+        payment.ProcessedAt);
 }
