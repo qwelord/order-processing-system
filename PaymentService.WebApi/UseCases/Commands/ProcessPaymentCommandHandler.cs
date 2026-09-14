@@ -1,4 +1,5 @@
-﻿using AutoMapper;
+﻿using System.Text.Json;
+using AutoMapper;
 using MediatR;
 using PaymentService.DataAccess;
 using PaymentService.DataAccess.Entities;
@@ -13,23 +14,34 @@ public class ProcessPaymentCommandHandler : IRequestHandler<ProcessPaymentComman
 {
     private readonly PaymentDbContext _dbContext;
     private readonly IMapper _mapper;
-    private readonly IKafkaProducerService _kafkaProducer;
 
-    public ProcessPaymentCommandHandler(PaymentDbContext dbContext, IMapper mapper, IKafkaProducerService kafkaProducer)
+    public ProcessPaymentCommandHandler(PaymentDbContext dbContext, IMapper mapper)
     {
         _dbContext = dbContext;
         _mapper = mapper;
-        _kafkaProducer = kafkaProducer;
     }
 
     public async Task<PaymentResponseDto> Handle(ProcessPaymentCommand request, CancellationToken cancellationToken)
     {
         var payment = _mapper.Map<Payment>(request.PaymentDto);
+        payment.Status = PaymentStatus.Completed;
+        payment.ProcessedAt = DateTime.UtcNow;
 
         _dbContext.Payments.Add(payment);
-        await _dbContext.SaveChangesAsync(cancellationToken);
 
-        await _kafkaProducer.PublishPaymentCompletedAsync(payment.OrderId, payment.Id, payment.Amount);
+        var eventMessage = new PaymentCompletedEvent(payment.OrderId, payment.Id, payment.Amount, "Completed", DateTime.UtcNow);
+
+        var outboxMessage = new OutboxMessage
+        {
+            Id = Guid.NewGuid(),
+            Type = nameof(PaymentCompletedEvent),
+            Content = JsonSerializer.Serialize(eventMessage),
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _dbContext.OutboxMessages.Add(outboxMessage);
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
 
         return _mapper.Map<PaymentResponseDto>(payment);
     }

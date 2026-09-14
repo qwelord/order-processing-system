@@ -1,11 +1,11 @@
 ﻿using Confluent.Kafka;
-using System.Text.Json;
 
 namespace PaymentService.WebApi.Services;
 
 public interface IKafkaProducerService
 {
     Task PublishPaymentCompletedAsync(Guid orderId, Guid paymentId, decimal amount);
+    Task PublishRawMessageAsync(string eventType, string jsonPayload);
 }
 
 public class KafkaProducerService : IKafkaProducerService, IDisposable
@@ -37,13 +37,17 @@ public class KafkaProducerService : IKafkaProducerService, IDisposable
     public async Task PublishPaymentCompletedAsync(Guid orderId, Guid paymentId, decimal amount)
     {
         var eventMessage = new PaymentCompletedEvent(orderId, paymentId, amount, "Completed", DateTime.UtcNow);
-        var jsonPayload = JsonSerializer.Serialize(eventMessage);
+        var jsonPayload = System.Text.Json.JsonSerializer.Serialize(eventMessage);
+        await PublishRawMessageAsync(nameof(PaymentCompletedEvent), jsonPayload);
+    }
 
+    public async Task PublishRawMessageAsync(string eventType, string jsonPayload)
+    {
         try
         {
             var result = await _producer.ProduceAsync(_topic, new Message<string, string>
             {
-                Key = orderId.ToString(),
+                Key = Guid.NewGuid().ToString(),
                 Value = jsonPayload
             });
 

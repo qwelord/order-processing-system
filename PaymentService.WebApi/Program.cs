@@ -16,13 +16,14 @@ builder.Services.AddDbContext<PaymentDbContext>(options =>
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 builder.Services.AddAutoMapper(typeof(Program).Assembly);
 builder.Services.AddSingleton<IKafkaProducerService, KafkaProducerService>();
+builder.Services.AddHostedService<OutboxProcessorBackgroundService>();
 
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<PaymentDbContext>();
-    db.Database.Migrate();
+    db.Database.EnsureCreated();
 }
 
 if (app.Environment.IsDevelopment())
@@ -33,4 +34,5 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthorization();
 app.MapControllers();
+
 app.Run();
