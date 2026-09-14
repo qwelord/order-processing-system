@@ -12,7 +12,7 @@ using PaymentService.DataAccess;
 namespace PaymentService.DataAccess.Migrations
 {
     [DbContext(typeof(PaymentDbContext))]
-    [Migration("20260909155156_InitialPayments")]
+    [Migration("20260914190300_InitialPayments")]
     partial class InitialPayments
     {
         /// <inheritdoc />
@@ -24,6 +24,37 @@ namespace PaymentService.DataAccess.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("PaymentService.DataAccess.Entities.OutboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProcessedAt");
+
+                    b.ToTable("outboxmessages", (string)null);
+                });
 
             modelBuilder.Entity("PaymentService.DataAccess.Entities.Payment", b =>
                 {
@@ -46,7 +77,7 @@ namespace PaymentService.DataAccess.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Payments");
+                    b.ToTable("payments", (string)null);
                 });
 #pragma warning restore 612, 618
         }
