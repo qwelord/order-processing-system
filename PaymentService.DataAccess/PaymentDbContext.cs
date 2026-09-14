@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using PaymentService.DataAccess.Entities;
 
 namespace PaymentService.DataAccess;
@@ -14,7 +14,6 @@ public class PaymentDbContext : DbContext
     {
         modelBuilder.Entity<Payment>().ToTable("payments");
         modelBuilder.Entity<OutboxMessage>().ToTable("outboxmessages");
-
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(PaymentDbContext).Assembly);
         base.OnModelCreating(modelBuilder);
     }

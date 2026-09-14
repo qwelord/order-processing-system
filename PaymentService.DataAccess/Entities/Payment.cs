@@ -1,4 +1,4 @@
-﻿namespace PaymentService.DataAccess.Entities;
+namespace PaymentService.DataAccess.Entities;
 
 public enum PaymentStatus
 {
@@ -13,5 +13,7 @@ public class Payment
     public Guid OrderId { get; set; }
     public decimal Amount { get; set; }
     public PaymentStatus Status { get; set; }
+    public string PaymentMethod { get; set; } = string.Empty;
+    public string? CardLast4 { get; set; }
     public DateTime ProcessedAt { get; set; }
 }

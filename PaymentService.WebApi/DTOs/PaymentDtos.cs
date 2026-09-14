@@ -1,4 +1,4 @@
-﻿namespace PaymentService.WebApi.DTOs;
+namespace PaymentService.WebApi.DTOs;
 
-public record ProcessPaymentDto(Guid OrderId, decimal Amount);
-public record PaymentResponseDto(Guid Id, Guid OrderId, decimal Amount, string Status, DateTime ProcessedAt);
+public record ProcessPaymentDto(Guid OrderId, decimal Amount, string PaymentMethod, string? CardLast4);
+public record PaymentResponseDto(Guid Id, Guid OrderId, decimal Amount, string Status, string PaymentMethod, string? CardLast4, DateTime ProcessedAt);

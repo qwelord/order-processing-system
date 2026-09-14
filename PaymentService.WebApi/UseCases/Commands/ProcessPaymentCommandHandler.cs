@@ -1,5 +1,6 @@
-﻿using System.Text.Json;
-using AutoMapper;
+using FluentValidation;
+using FluentValidation.Results;
+using System.Text.Json;
 using MediatR;
 using PaymentService.DataAccess;
 using PaymentService.DataAccess.Entities;
@@ -12,37 +13,66 @@ public record ProcessPaymentCommand(ProcessPaymentDto PaymentDto) : IRequest<Pay
 
 public class ProcessPaymentCommandHandler : IRequestHandler<ProcessPaymentCommand, PaymentResponseDto>
 {
-    private readonly PaymentDbContext _dbContext;
-    private readonly IMapper _mapper;
+    private readonly PaymentDbContext _db;
 
-    public ProcessPaymentCommandHandler(PaymentDbContext dbContext, IMapper mapper)
+    public ProcessPaymentCommandHandler(PaymentDbContext db)
     {
-        _dbContext = dbContext;
-        _mapper = mapper;
+        _db = db;
     }
 
     public async Task<PaymentResponseDto> Handle(ProcessPaymentCommand request, CancellationToken cancellationToken)
     {
-        var payment = _mapper.Map<Payment>(request.PaymentDto);
-        payment.Status = PaymentStatus.Completed;
-        payment.ProcessedAt = DateTime.UtcNow;
+        if (request.PaymentDto.Amount <= 0)
+            throw new ValidationException(new[] { new ValidationFailure("Amount", "Payment amount must be positive.") });
 
-        _dbContext.Payments.Add(payment);
+        if (request.PaymentDto.PaymentMethod is not ("Card" or "CashOnDelivery"))
+            throw new ValidationException(new[] { new ValidationFailure("PaymentMethod", "Unsupported payment method.") });
 
-        var eventMessage = new PaymentCompletedEvent(payment.OrderId, payment.Id, payment.Amount, "Completed", DateTime.UtcNow);
-
-        var outboxMessage = new OutboxMessage
+        var payment = new Payment
         {
             Id = Guid.NewGuid(),
-            Type = nameof(PaymentCompletedEvent),
-            Content = JsonSerializer.Serialize(eventMessage),
-            CreatedAt = DateTime.UtcNow
+            OrderId = request.PaymentDto.OrderId,
+            Amount = request.PaymentDto.Amount,
+            PaymentMethod = request.PaymentDto.PaymentMethod,
+            CardLast4 = request.PaymentDto.PaymentMethod == "Card" ? request.PaymentDto.CardLast4 : null,
+            ProcessedAt = DateTime.UtcNow
         };
 
-        _dbContext.OutboxMessages.Add(outboxMessage);
+        if (payment.PaymentMethod == "Card")
+        {
+            if (string.IsNullOrWhiteSpace(payment.CardLast4) || payment.CardLast4.Length != 4 || !payment.CardLast4.All(char.IsDigit))
+                throw new ValidationException(new[] { new ValidationFailure("CardLast4", "Card payment requires four digits from the card number.") });
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
+            payment.Status = payment.CardLast4 == "0000" ? PaymentStatus.Failed : PaymentStatus.Completed;
+        }
+        else
+        {
+            payment.Status = PaymentStatus.Pending;
+        }
 
-        return _mapper.Map<PaymentResponseDto>(payment);
+        _db.Payments.Add(payment);
+
+        if (payment.Status == PaymentStatus.Completed)
+        {
+            var eventMessage = new PaymentCompletedEvent(payment.OrderId, payment.Id, payment.Amount, "Completed", payment.ProcessedAt);
+            _db.OutboxMessages.Add(new OutboxMessage
+            {
+                Id = Guid.NewGuid(),
+                Type = nameof(PaymentCompletedEvent),
+                Content = JsonSerializer.Serialize(eventMessage),
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return new PaymentResponseDto(
+            payment.Id,
+            payment.OrderId,
+            payment.Amount,
+            payment.Status.ToString(),
+            payment.PaymentMethod,
+            payment.CardLast4,
+            payment.ProcessedAt);
     }
 }
