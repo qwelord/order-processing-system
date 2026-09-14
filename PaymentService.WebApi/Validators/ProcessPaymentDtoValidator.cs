@@ -11,6 +11,9 @@ public class ProcessPaymentDtoValidator : AbstractValidator<ProcessPaymentDto>
         RuleFor(x => x.Amount).GreaterThan(0);
         RuleFor(x => x.PaymentMethod).Must(x => x is "Card" or "CashOnDelivery");
         When(x => x.PaymentMethod == "Card", () =>
-            RuleFor(x => x.CardLast4).Matches("^[0-9]{4}$").NotEmpty());
+            RuleFor(x => x.CardLast4)
+                .NotEmpty()
+                .Matches("^[0-9]{4}$")
+                .WithMessage("CardLast4 must contain exactly four digits."));
     }
 }
