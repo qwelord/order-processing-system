@@ -4,5 +4,6 @@
   <Project Path="OrderService.Tests/OrderService.Tests.csproj" />
   <Project Path="OrderService.WebApi/OrderService.WebApi.csproj" />
   <Project Path="PaymentService.DataAccess/PaymentService.DataAccess.csproj" />
+  <Project Path="PaymentService.Tests/PaymentService.Tests.csproj" />
   <Project Path="PaymentService.WebApi/PaymentService.WebApi.csproj" />
 </Solution>
