@@ -1,9 +1,20 @@
-﻿using Refit;
+using Refit;
 
 namespace OrderService.WebApi.Clients;
 
-public record ProcessPaymentRequest(Guid OrderId, decimal Amount);
-public record ProcessPaymentResponse(Guid Id, Guid OrderId, decimal Amount, string Status, DateTime ProcessedAt);
+public record ProcessPaymentRequest(
+    Guid OrderId,
+    decimal Amount,
+    string PaymentMethod,
+    string? CardLast4);
+
+public record ProcessPaymentResponse(
+    Guid Id,
+    Guid OrderId,
+    decimal Amount,
+    string Status,
+    string PaymentMethod,
+    DateTime ProcessedAt);
 
 public interface IPaymentClient
 {
