@@ -2,10 +2,9 @@
 
 public enum OrderStatus
 {
-    Created = 0,
-    PendingPayment = 1,
-    Paid = 2,
-    Failed = 3
+    PendingPayment = 0,
+    Paid = 1,
+    Cancelled = 2
 }
 
 public class Order

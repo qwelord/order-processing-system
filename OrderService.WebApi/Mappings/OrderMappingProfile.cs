@@ -10,7 +10,7 @@ public class OrderMappingProfile : Profile
     {
         CreateMap<CreateOrderDto, Order>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => Guid.NewGuid()))
-            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => OrderStatus.Created))
+            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => OrderStatus.PendingPayment))
             .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow));
 
         CreateMap<Order, OrderResponseDto>()
