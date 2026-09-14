@@ -10,6 +10,16 @@ using Refit;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
 builder.Services.AddControllers(options =>
 {
     options.Filters.Add<ValidationExceptionFilter>();
@@ -32,6 +42,7 @@ builder.Services.AddAutoMapper(typeof(Program).Assembly);
 
 var paymentServiceUrl = builder.Configuration["PaymentService:BaseUrl"];
 builder.Services.AddHttpClient("PaymentClient", c => c.BaseAddress = new Uri(paymentServiceUrl!));
+
 builder.Services.AddTransient(sp =>
 {
     var client = sp.GetRequiredService<IHttpClientFactory>().CreateClient("PaymentClient");
@@ -52,6 +63,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseCors("AllowAll");
 app.UseAuthorization();
 app.MapControllers();
 

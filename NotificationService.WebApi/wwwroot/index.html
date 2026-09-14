@@ -3,136 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Order Processing System — Live Event Monitor</title>
+    <title>Order Processing System — Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
     <style>
-        :root {
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
-            --accent-green: #10b981;
-            --accent-red: #ef4444;
-            --accent-blue: #3b82f6;
-            --border-color: #334155;
-        }
-
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-primary);
-            margin: 0;
-            padding: 40px 20px;
-            display: flex;
-            justify-content: center;
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
         }
 
-        .container {
-            width: 100%;
-            max-width: 800px;
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid #334155;
         }
 
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid var(--border-color);
+        .neon-glow {
+            text-shadow: 0 0 15px rgba(16, 185, 129, 0.6);
         }
 
-        .title {
-            font-size: 20px;
-            font-weight: 600;
-            letter-spacing: -0.02em;
-            margin: 0;
-        }
-
-        .status-badge {
-            font-size: 13px;
-            font-weight: 500;
-            padding: 6px 12px;
-            border-radius: 9999px;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            border: 1px solid transparent;
-        }
-
-            .status-badge.connected {
-                background-color: rgba(16, 185, 129, 0.1);
-                color: var(--accent-green);
-                border-color: rgba(16, 185, 129, 0.2);
-            }
-
-            .status-badge.disconnected {
-                background-color: rgba(239, 68, 68, 0.1);
-                color: var(--accent-red);
-                border-color: rgba(239, 68, 68, 0.2);
-            }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background-color: currentColor;
-        }
-
-        .events-container {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 48px;
-            background-color: var(--card-bg);
-            border-radius: 8px;
-            border: 1px dashed var(--border-color);
-            color: var(--text-secondary);
-            font-size: 14px;
-        }
-
-        .event-card {
-            background-color: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 16px;
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
+        .tab-content {
+            display: none;
             animation: fadeIn 0.3s ease-in-out;
         }
 
-        .event-field {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
+            .tab-content.active {
+                display: block;
+            }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
         }
 
-        .event-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--text-secondary);
-            font-weight: 600;
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #0f172a;
         }
 
-        .event-value {
-            font-size: 14px;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-            color: var(--text-primary);
-        }
-
-        .status-completed {
-            color: var(--accent-green);
-            font-weight: 600;
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
         }
 
         @keyframes fadeIn {
             from {
                 opacity: 0;
-                transform: translateY(-8px);
+                transform: translateY(5px);
             }
 
             to {
@@ -140,31 +56,247 @@
                 transform: translateY(0);
             }
         }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .toast-animate {
+            animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes pulse-fast {
+            0%, 100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .animate-pulse-fast {
+            animation: pulse-fast 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
     </style>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1 class="title">SignalR Live Stream Monitor</h1>
-            <div id="statusBadge" class="status-badge disconnected">
-                <span class="status-dot"></span>
-                <span id="statusText">Disconnected</span>
+<body class="h-screen flex overflow-hidden selection:bg-emerald-500 selection:text-white">
+
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none"></div>
+
+    <aside class="w-64 glass-panel flex flex-col h-full border-r border-slate-700 z-10">
+        <div class="p-6 border-b border-slate-700">
+            <h1 class="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400">NEXUS ADMIN</h1>
+            <p class="text-xs text-slate-400 mt-1 uppercase tracking-widest">Order System v1.0</p>
+        </div>
+        <nav class="flex-1 p-4 space-y-2">
+            <button onclick="switchTab('dashboard')" id="btn-dashboard" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 transition-all text-sm font-medium">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                Live Dashboard
+            </button>
+            <button onclick="switchTab('orders')" id="btn-orders" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 transition-all text-sm font-medium">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                Order Manager
+            </button>
+            <button onclick="switchTab('health')" id="btn-health" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 transition-all text-sm font-medium">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                System Health
+            </button>
+        </nav>
+        <div class="p-4 border-t border-slate-700">
+            <div id="statusBadge" class="flex items-center gap-2 px-3 py-2 rounded border border-red-500/20 bg-red-500/10 text-red-400 text-xs font-semibold">
+                <div class="w-2 h-2 rounded-full bg-red-500"></div>
+                <span id="statusText">SignalR Disconnected</span>
             </div>
         </div>
+    </aside>
 
-        <div id="eventsContainer" class="events-container">
-            <div id="emptyState" class="empty-state">
-                Awaiting incoming payment events from Kafka...
+    <main class="flex-1 flex flex-col relative">
+        <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSg1MSwgNjUsIDg1LCAwLjIpIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-50 pointer-events-none"></div>
+
+        <div class="flex-1 p-8 overflow-y-auto custom-scrollbar z-10">
+
+            <div id="tab-dashboard" class="tab-content active h-full flex flex-col">
+                <div class="grid grid-cols-3 gap-4 mb-6">
+                    <div class="glass-panel p-4 rounded-xl flex flex-col">
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Processed</span>
+                        <span id="statCount" class="text-2xl font-bold text-slate-100 mt-1 font-mono">0</span>
+                    </div>
+                    <div class="glass-panel p-4 rounded-xl flex flex-col">
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Volume</span>
+                        <span id="statVolume" class="text-2xl font-bold text-emerald-400 mt-1 font-mono">0.00 ₽</span>
+                    </div>
+                    <div class="glass-panel p-4 rounded-xl flex flex-col">
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Avg Order Value</span>
+                        <span id="statAvg" class="text-2xl font-bold text-cyan-400 mt-1 font-mono">0.00 ₽</span>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-slate-100">Live Event Stream</h2>
+                    <span class="px-3 py-1 bg-slate-800 border border-slate-700 rounded text-xs text-slate-400 font-mono" id="eventCounter">Events caught: 0</span>
+                </div>
+
+                <div id="eventsContainer" class="flex flex-col gap-4 flex-1">
+                    <div id="emptyState" class="flex-1 flex flex-col items-center justify-center border border-dashed border-slate-600 rounded-xl bg-slate-800/30 text-slate-400 py-12">
+                        <svg class="w-12 h-12 mb-4 opacity-50 animate-pulse-fast" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                        <p class="text-sm">Awaiting incoming payment events from Kafka...</p>
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+            <div id="tab-orders" class="tab-content">
+                <h2 class="text-2xl font-semibold text-slate-100 mb-6">Order Manager</h2>
+                <div class="glass-panel p-6 rounded-xl max-w-xl">
+                    <form id="createOrderForm" class="space-y-5" onsubmit="submitOrder(event)">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Customer Name</label>
+                            <input type="text" id="customerName" required placeholder="e.g. Alexey Ivanov" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-3 text-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Total Amount (RUB)</label>
+                            <input type="number" step="0.01" id="totalAmount" required placeholder="2500.00" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-3 text-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all">
+                        </div>
+                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-lg transition-colors flex justify-center items-center gap-2">
+                            <span>Dispatch Order</span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                        </button>
+                        <div id="orderResult" class="hidden p-4 rounded-lg text-sm mt-4 font-mono"></div>
+                    </form>
+                </div>
+            </div>
+
+            <div id="tab-health" class="tab-content">
+                <h2 class="text-2xl font-semibold text-slate-100 mb-6">System Health Matrix</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="glass-panel p-5 rounded-xl border-l-4 border-l-emerald-500 flex items-center justify-between">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-200">Order Service</h3>
+                            <p class="text-xs text-slate-400 mt-1">.NET 8 REST API (Port 5001)</p>
+                        </div>
+                        <span class="px-2 py-1 bg-emerald-500/10 text-emerald-400 text-xs rounded border border-emerald-500/20">Operational</span>
+                    </div>
+                    <div class="glass-panel p-5 rounded-xl border-l-4 border-l-emerald-500 flex items-center justify-between">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-200">Payment Service</h3>
+                            <p class="text-xs text-slate-400 mt-1">.NET 8 Worker (Port 5002)</p>
+                        </div>
+                        <span class="px-2 py-1 bg-emerald-500/10 text-emerald-400 text-xs rounded border border-emerald-500/20">Operational</span>
+                    </div>
+                    <div class="glass-panel p-5 rounded-xl border-l-4 border-l-emerald-500 flex items-center justify-between">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-200">Notification Service</h3>
+                            <p class="text-xs text-slate-400 mt-1">SignalR Hub (Port 5003)</p>
+                        </div>
+                        <span class="px-2 py-1 bg-emerald-500/10 text-emerald-400 text-xs rounded border border-emerald-500/20">Operational</span>
+                    </div>
+                    <div class="glass-panel p-5 rounded-xl border-l-4 border-l-emerald-500 flex items-center justify-between">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-200">Apache Kafka</h3>
+                            <p class="text-xs text-slate-400 mt-1">Message Broker (Port 9092)</p>
+                        </div>
+                        <span class="px-2 py-1 bg-emerald-500/10 text-emerald-400 text-xs rounded border border-emerald-500/20">Operational</span>
+                    </div>
+                    <div class="glass-panel p-5 rounded-xl border-l-4 border-l-emerald-500 flex items-center justify-between col-span-2">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-200">PostgreSQL Databases</h3>
+                            <p class="text-xs text-slate-400 mt-1">orders_db, payments_db</p>
+                        </div>
+                        <span class="px-2 py-1 bg-emerald-500/10 text-emerald-400 text-xs rounded border border-emerald-500/20">Operational</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
     <script>
+        let eventCount = 0;
+        let totalVolume = 0;
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+
+            const btnBaseClass = "w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-medium";
+            const btnInactive = btnBaseClass + " text-slate-300 hover:bg-slate-800";
+            const btnActive = btnBaseClass + " bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+
+            document.getElementById('btn-dashboard').className = btnInactive;
+            document.getElementById('btn-orders').className = btnInactive;
+            document.getElementById('btn-health').className = btnInactive;
+
+            document.getElementById('btn-' + tabId).className = btnActive;
+        }
+
+        function showToast(title, message) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'glass-panel p-4 rounded-xl border-l-4 border-l-emerald-500 shadow-2xl pointer-events-auto toast-animate flex flex-col';
+            toast.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">${title}</span>
+                        <span class="text-[10px] text-slate-500">Just now</span>
+                    </div>
+                    <p class="text-sm text-slate-200 mt-1 font-mono">${message}</p>
+                `;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.5s ease';
+                setTimeout(() => toast.remove(), 500);
+            }, 4000);
+        }
+
+        async function submitOrder(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<span class="animate-pulse">Processing...</span>';
+            btn.disabled = true;
+
+            const name = document.getElementById('customerName').value;
+            const amount = parseFloat(document.getElementById('totalAmount').value);
+            const resDiv = document.getElementById('orderResult');
+
+            try {
+                const response = await fetch('http://localhost:5001/api/orders', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ customerName: name, totalAmount: amount })
+                });
+
+                if (response.ok) {
+                    resDiv.className = "p-4 rounded-lg text-sm mt-4 font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 block";
+                    resDiv.textContent = "Success! Event routed to Kafka.";
+                    e.target.reset();
+                    setTimeout(() => switchTab('dashboard'), 1000);
+                } else {
+                    const err = await response.text();
+                    resDiv.className = "p-4 rounded-lg text-sm mt-4 font-mono bg-red-500/10 text-red-400 border border-red-500/20 block";
+                    resDiv.textContent = "Error: " + err;
+                }
+            } catch (err) {
+                resDiv.className = "p-4 rounded-lg text-sm mt-4 font-mono bg-red-500/10 text-red-400 border border-red-500/20 block";
+                resDiv.textContent = "Connection failed. Check OrderService on port 5001.";
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
         const statusBadge = document.getElementById('statusBadge');
-        const statusText = document.getElementById('statusText');
         const eventsContainer = document.getElementById('eventsContainer');
         const emptyState = document.getElementById('emptyState');
+        const counterEl = document.getElementById('eventCounter');
 
         const connection = new signalR.HubConnectionBuilder()
             .withUrl("http://localhost:5003/notifications")
@@ -172,47 +304,53 @@
             .build();
 
         connection.on("ReceivePaymentUpdate", (data) => {
-            if (emptyState) {
-                emptyState.style.display = 'none';
-            }
+            if (emptyState) emptyState.style.display = 'none';
+
+            eventCount++;
+            totalVolume += data.amount;
+
+            counterEl.textContent = `Events caught: ${eventCount}`;
+            document.getElementById('statCount').textContent = eventCount;
+            document.getElementById('statVolume').textContent = new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB' }).format(totalVolume);
+            document.getElementById('statAvg').textContent = new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB' }).format(totalVolume / eventCount);
 
             const card = document.createElement('div');
-            card.className = 'event-card';
+            card.className = 'glass-panel p-5 rounded-xl grid grid-cols-2 md:grid-cols-4 gap-4 items-center';
+            card.style.animation = 'fadeIn 0.4s ease-out';
 
             const formattedAmount = new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB' }).format(data.amount);
-            const formattedDate = new Date(data.timestamp).toLocaleTimeString('ru-RU');
+            const time = new Date(data.timestamp).toLocaleTimeString('ru-RU');
 
             card.innerHTML = `
-                    <div class="event-field">
-                        <span class="event-label">Order ID</span>
-                        <span class="event-value">${data.orderId}</span>
+                    <div class="flex flex-col">
+                        <span class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">Order ID</span>
+                        <span class="text-xs text-slate-300 font-mono truncate" title="${data.orderId}">${data.orderId.substring(0, 8)}...</span>
                     </div>
-                    <div class="event-field">
-                        <span class="event-label">Payment ID</span>
-                        <span class="event-value">${data.paymentId}</span>
+                    <div class="flex flex-col">
+                        <span class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">Payment ID</span>
+                        <span class="text-xs text-slate-300 font-mono truncate" title="${data.paymentId}">${data.paymentId.substring(0, 8)}...</span>
                     </div>
-                    <div class="event-field">
-                        <span class="event-label">Amount</span>
-                        <span class="event-value">${formattedAmount}</span>
+                    <div class="flex flex-col">
+                        <span class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">Amount</span>
+                        <span class="text-sm text-slate-100 font-mono font-bold">${formattedAmount}</span>
                     </div>
-                    <div class="event-field">
-                        <span class="event-label">Status / Time</span>
-                        <span class="event-value status-completed">${data.status} (${formattedDate})</span>
+                    <div class="flex flex-col items-end">
+                        <span class="px-2 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded text-xs font-bold neon-glow">
+                            ${data.status} • ${time}
+                        </span>
                     </div>
                 `;
-
             eventsContainer.prepend(card);
+
+            showToast("Payment Succeeded", `Order #${data.orderId.substring(0, 6)} processed for ${formattedAmount}`);
         });
 
         connection.start()
             .then(() => {
-                statusBadge.className = "status-badge connected";
-                statusText.textContent = "Connected";
+                statusBadge.className = "flex items-center gap-2 px-3 py-2 rounded border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 text-xs font-semibold";
+                statusBadge.innerHTML = '<div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse-fast"></div><span>SignalR Connected</span>';
             })
-            .catch(err => {
-                statusBadge.className = "status-badge disconnected";
-                statusText.textContent = "Connection Error";
-            });
+            .catch(err => console.error(err));
     </script>
 </body>
 </html>
