@@ -1,356 +1,119 @@
-﻿<!DOCTYPE html>
-<html lang="ru">
+<!doctype html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Order Processing System — Admin Panel</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
-    <style>
-        body {
-            background-color: #0f172a;
-            color: #f8fafc;
-            font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
-        }
-
-        .glass-panel {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(12px);
-            border: 1px solid #334155;
-        }
-
-        .neon-glow {
-            text-shadow: 0 0 15px rgba(16, 185, 129, 0.6);
-        }
-
-        .tab-content {
-            display: none;
-            animation: fadeIn 0.3s ease-in-out;
-        }
-
-            .tab-content.active {
-                display: block;
-            }
-
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #0f172a;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #334155;
-            border-radius: 4px;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(5px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes slideInRight {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-
-        .toast-animate {
-            animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        @keyframes pulse-fast {
-            0%, 100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.5;
-            }
-        }
-
-        .animate-pulse-fast {
-            animation: pulse-fast 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OrderFlow</title>
+  <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@8.0.17/dist/browser/signalr.min.js"></script>
+  <style>
+    :root{--bg:#0b1020;--panel:#11182b;--panel2:#17213a;--text:#f7f8fb;--muted:#8f9bb4;--line:#25304a;--accent:#7c5cff;--accent2:#4dd4ff;--good:#28c76f;--warn:#ffb020;--bad:#ff5d6c;--shadow:0 18px 45px rgba(0,0,0,.28);--radius:18px}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top right,#1b2450 0,#0b1020 42%),var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    button,input,select,textarea{font:inherit}button{cursor:pointer;border:0}.app{display:flex;min-height:100vh}.sidebar{width:250px;padding:26px 18px;border-right:1px solid rgba(255,255,255,.06);background:rgba(10,15,30,.78);backdrop-filter:blur(18px);position:sticky;top:0;height:100vh}.brand{font-size:22px;font-weight:800;letter-spacing:-.04em;margin-bottom:26px}.brand span{color:var(--accent2)}.nav{display:grid;gap:8px}.nav button{background:transparent;color:var(--muted);padding:12px 14px;border-radius:12px;text-align:left}.nav button.active,.nav button:hover{background:var(--panel2);color:var(--text)}.status-pill{margin-top:30px;padding:13px;background:rgba(40,199,111,.08);border:1px solid rgba(40,199,111,.18);border-radius:14px;color:#bdf5d3;font-size:13px}.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--good);margin-right:8px}.main{flex:1;padding:28px 34px;max-width:1500px}.topbar{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:28px}.topbar h1{margin:0;font-size:30px;letter-spacing:-.04em}.topbar p{margin:5px 0 0;color:var(--muted)}.primary{background:linear-gradient(135deg,var(--accent),#9b72ff);color:white;padding:12px 16px;border-radius:12px;box-shadow:0 10px 28px rgba(124,92,255,.3);font-weight:700}.secondary{background:var(--panel2);color:var(--text);padding:11px 14px;border-radius:12px;border:1px solid var(--line)}.danger{background:rgba(255,93,108,.12);color:#ff9aa4;padding:10px 12px;border-radius:10px}.grid{display:grid;gap:16px}.stats{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:20px}.stat{background:linear-gradient(180deg,rgba(24,33,58,.96),rgba(15,22,40,.96));border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}.stat .label{color:var(--muted);font-size:13px}.stat .value{font-size:30px;font-weight:800;margin-top:8px}.section{background:rgba(15,22,40,.82);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}.section-head{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:15px}.section h2{margin:0;font-size:18px}.table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse}.table th,.table td{padding:13px 10px;text-align:left;border-bottom:1px solid rgba(255,255,255,.06);white-space:nowrap}.table th{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}.table td{font-size:14px}.badge{display:inline-flex;align-items:center;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:700}.badge.paid{background:rgba(40,199,111,.12);color:#87e7aa}.badge.pending{background:rgba(255,176,32,.12);color:#ffd27a}.badge.cancelled,.badge.failed{background:rgba(255,93,108,.12);color:#ff9da7}.badge.info{background:rgba(77,212,255,.12);color:#8fe8ff}.toolbar{display:flex;gap:10px;flex-wrap:wrap}.control{background:#0f1628;color:var(--text);border:1px solid var(--line);padding:11px 12px;border-radius:12px;outline:none}.control:focus{border-color:var(--accent)}.products{grid-template-columns:repeat(3,minmax(0,1fr))}.product{background:linear-gradient(180deg,#141d33,#0f1627);border:1px solid var(--line);border-radius:18px;padding:18px;display:flex;flex-direction:column;min-height:215px}.product-title{font-weight:750;font-size:17px}.product-desc{color:var(--muted);font-size:13px;line-height:1.5;margin:8px 0 15px;flex:1}.product-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.price{font-size:21px;font-weight:800}.stock{font-size:12px;color:var(--muted)}.row{display:flex;gap:10px;align-items:center}.row-between{display:flex;justify-content:space-between;align-items:center;gap:10px}.modal{position:fixed;inset:0;background:rgba(5,8,18,.7);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:20px;z-index:20}.modal.open{display:flex}.dialog{width:min(700px,100%);max-height:90vh;overflow:auto;background:#10182b;border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 28px 80px rgba(0,0,0,.45)}.dialog h3{margin-top:0}.form{display:grid;gap:13px}.form label{display:grid;gap:7px;color:var(--muted);font-size:13px}.form input,.form select,.form textarea{width:100%;background:#0b1222;color:var(--text);border:1px solid var(--line);border-radius:12px;padding:11px 12px}.form textarea{min-height:90px;resize:vertical}.cart{display:grid;gap:10px}.cart-item{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.06)}.qty{display:flex;align-items:center;gap:8px}.qty button{width:30px;height:30px;border-radius:9px;background:var(--panel2);color:white}.timeline{display:grid;gap:0}.step{display:grid;grid-template-columns:28px 1fr;gap:12px;min-height:64px}.step-marker{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#242e48;color:#8f9bb4;font-size:12px;font-weight:800;position:relative}.step:not(:last-child) .step-marker:after{content:"";position:absolute;top:28px;width:2px;height:36px;background:#242e48}.step.done .step-marker{background:var(--good);color:#06200f}.step.done .title{color:#baf2cf}.step .title{font-weight:700}.step .desc{font-size:12px;color:var(--muted);margin-top:4px}.toast-wrap{position:fixed;right:22px;bottom:22px;display:grid;gap:10px;z-index:30}.toast{padding:13px 15px;background:#141d33;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);min-width:280px}.toast.success{border-color:rgba(40,199,111,.35)}.toast.error{border-color:rgba(255,93,108,.35)}.empty{padding:34px;text-align:center;color:var(--muted)}.hidden{display:none!important}.subtle{color:var(--muted)}.hero{display:grid;grid-template-columns:1.4fr .8fr;gap:16px;margin-bottom:20px}.hero-card{padding:24px;border-radius:22px;border:1px solid var(--line);background:linear-gradient(135deg,rgba(124,92,255,.2),rgba(77,212,255,.08) 60%,rgba(17,24,43,.95));min-height:180px}.hero-card h2{font-size:28px;max-width:620px;letter-spacing:-.04em;margin:0 0 12px}.hero-card p{color:#b7c1d5;max-width:650px;line-height:1.6}.mini-panel{padding:20px;background:rgba(15,22,40,.82);border:1px solid var(--line);border-radius:22px}.mini-panel strong{display:block;font-size:22px;margin-top:10px}.loading{color:var(--muted);padding:20px;text-align:center}.two{grid-template-columns:1fr 1fr}.detail-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:16px}.item-line{display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.06)}.footer-note{font-size:12px;color:var(--muted);margin-top:18px}
+    @media(max-width:1100px){.stats{grid-template-columns:repeat(2,1fr)}.products{grid-template-columns:repeat(2,1fr)}.hero,.detail-grid{grid-template-columns:1fr}.sidebar{width:210px}}
+    @media(max-width:760px){.app{display:block}.sidebar{position:static;width:auto;height:auto;border-right:0;border-bottom:1px solid rgba(255,255,255,.06)}.nav{grid-template-columns:repeat(3,1fr)}.main{padding:20px}.stats,.products{grid-template-columns:1fr}.topbar{align-items:flex-start;flex-direction:column}}
+  </style>
 </head>
-<body class="h-screen flex overflow-hidden selection:bg-emerald-500 selection:text-white">
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">Order<span>Flow</span></div>
+    <div class="nav">
+      <button data-page="dashboard" class="active">Dashboard</button>
+      <button data-page="catalog">Catalog</button>
+      <button data-page="orders">Orders</button>
+    </div>
+    <div class="status-pill"><span class="status-dot"></span><span id="liveStatus">Realtime connected</span></div>
+    <div class="footer-note">Order Service · Payment Service · Kafka · Outbox · SignalR</div>
+  </aside>
+  <main class="main">
+    <div class="topbar">
+      <div><h1 id="pageTitle">Operations dashboard</h1><p id="pageSubtitle">A live view of your order processing flow.</p></div>
+      <div class="row"><button class="secondary" onclick="refreshAll()">Refresh</button><button class="primary" onclick="openOrderModal()">Create order</button></div>
+    </div>
 
-    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none"></div>
+    <section id="page-dashboard" class="page">
+      <div class="hero">
+        <div class="hero-card"><h2>From product catalog to paid order in one clean flow.</h2><p>Create products, build an order, choose a payment method and watch the state move through the distributed workflow in real time.</p><button class="primary" onclick="showPage('catalog')">Open catalog</button></div>
+        <div class="mini-panel"><div class="subtle">Realtime event</div><strong id="lastEvent">Waiting for payment events…</strong><div class="subtle" id="lastEventTime"></div></div>
+      </div>
+      <div class="grid stats">
+        <div class="stat"><div class="label">Total orders</div><div class="value" id="statOrders">—</div></div>
+        <div class="stat"><div class="label">Paid</div><div class="value" id="statPaid">—</div></div>
+        <div class="stat"><div class="label">Pending</div><div class="value" id="statPending">—</div></div>
+        <div class="stat"><div class="label">Revenue</div><div class="value" id="statRevenue">—</div></div>
+      </div>
+      <div class="section"><div class="section-head"><h2>Recent orders</h2><button class="secondary" onclick="showPage('orders')">View all</button></div><div class="table-wrap" id="recentOrders"></div></div>
+    </section>
 
-    <aside class="w-64 glass-panel flex flex-col h-full border-r border-slate-700 z-10">
-        <div class="p-6 border-b border-slate-700">
-            <h1 class="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400">NEXUS ADMIN</h1>
-            <p class="text-xs text-slate-400 mt-1 uppercase tracking-widest">Order System v1.0</p>
-        </div>
-        <nav class="flex-1 p-4 space-y-2">
-            <button onclick="switchTab('dashboard')" id="btn-dashboard" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 transition-all text-sm font-medium">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                Live Dashboard
-            </button>
-            <button onclick="switchTab('orders')" id="btn-orders" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 transition-all text-sm font-medium">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                Order Manager
-            </button>
-            <button onclick="switchTab('health')" id="btn-health" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 transition-all text-sm font-medium">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                System Health
-            </button>
-        </nav>
-        <div class="p-4 border-t border-slate-700">
-            <div id="statusBadge" class="flex items-center gap-2 px-3 py-2 rounded border border-red-500/20 bg-red-500/10 text-red-400 text-xs font-semibold">
-                <div class="w-2 h-2 rounded-full bg-red-500"></div>
-                <span id="statusText">SignalR Disconnected</span>
-            </div>
-        </div>
-    </aside>
+    <section id="page-catalog" class="page hidden">
+      <div class="section">
+        <div class="section-head"><h2>Product catalog</h2><div class="toolbar"><input id="productSearch" class="control" placeholder="Search products" oninput="renderProducts()"><button class="primary" onclick="openProductModal()">Add product</button></div></div>
+        <div class="grid products" id="productGrid"></div>
+      </div>
+    </section>
 
-    <main class="flex-1 flex flex-col relative">
-        <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSg1MSwgNjUsIDg1LCAwLjIpIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-50 pointer-events-none"></div>
+    <section id="page-orders" class="page hidden">
+      <div class="section">
+        <div class="section-head"><h2>Orders</h2><div class="toolbar"><input id="orderSearch" class="control" placeholder="Search customer or ID" oninput="loadOrders()"><select id="orderStatus" class="control" onchange="loadOrders()"><option value="">All statuses</option><option>PendingPayment</option><option>Paid</option><option>Cancelled</option></select></div></div>
+        <div class="table-wrap" id="ordersTable"></div>
+      </div>
+    </section>
+  </main>
+</div>
 
-        <div class="flex-1 p-8 overflow-y-auto custom-scrollbar z-10">
+<div id="productModal" class="modal"><div class="dialog"><div class="section-head"><h3 id="productModalTitle">New product</h3><button class="secondary" onclick="closeModal('productModal')">Close</button></div><form class="form" onsubmit="saveProduct(event)"><input type="hidden" id="productId"><label>Name<input id="productName" required maxlength="200"></label><label>Description<textarea id="productDescription" maxlength="1000"></textarea></label><div class="grid two"><label>Price<input id="productPrice" required type="number" min="0.01" step="0.01"></label><label>Stock<input id="productStock" required type="number" min="0" step="1"></label></div><label class="row"><input id="productActive" type="checkbox" checked> Active</label><button class="primary" type="submit">Save product</button></form></div></div>
 
-            <div id="tab-dashboard" class="tab-content active h-full flex flex-col">
-                <div class="grid grid-cols-3 gap-4 mb-6">
-                    <div class="glass-panel p-4 rounded-xl flex flex-col">
-                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Processed</span>
-                        <span id="statCount" class="text-2xl font-bold text-slate-100 mt-1 font-mono">0</span>
-                    </div>
-                    <div class="glass-panel p-4 rounded-xl flex flex-col">
-                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Volume</span>
-                        <span id="statVolume" class="text-2xl font-bold text-emerald-400 mt-1 font-mono">0.00 ₽</span>
-                    </div>
-                    <div class="glass-panel p-4 rounded-xl flex flex-col">
-                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Avg Order Value</span>
-                        <span id="statAvg" class="text-2xl font-bold text-cyan-400 mt-1 font-mono">0.00 ₽</span>
-                    </div>
-                </div>
+<div id="orderModal" class="modal"><div class="dialog"><div class="section-head"><h3>Create order</h3><button class="secondary" onclick="closeModal('orderModal')">Close</button></div><form class="form" onsubmit="createOrder(event)"><div class="grid two"><label>Customer name<input id="customerName" required maxlength="200"></label><label>Email<input id="customerEmail" required type="email"></label></div><div class="section"><div class="section-head"><h3>Cart</h3><span id="cartTotal" class="price">€0.00</span></div><div id="cartItems" class="cart"></div></div><label>Payment method<select id="paymentMethod" onchange="toggleCardField()"><option value="Card">Card</option><option value="CashOnDelivery">Cash on delivery</option></select></label><label id="cardField">Card number<input id="cardNumber" inputmode="numeric" maxlength="19" placeholder="4242 4242 4242 4242"></label><div class="row-between"><span class="subtle">Only the last 4 digits are sent to the payment service.</span><button class="primary" type="submit">Place order</button></div></form></div></div>
 
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold text-slate-100">Live Event Stream</h2>
-                    <span class="px-3 py-1 bg-slate-800 border border-slate-700 rounded text-xs text-slate-400 font-mono" id="eventCounter">Events caught: 0</span>
-                </div>
+<div id="detailsModal" class="modal"><div class="dialog"><div class="section-head"><h3>Order details</h3><button class="secondary" onclick="closeModal('detailsModal')">Close</button></div><div id="orderDetails"></div></div></div>
+<div class="toast-wrap" id="toasts"></div>
 
-                <div id="eventsContainer" class="flex flex-col gap-4 flex-1">
-                    <div id="emptyState" class="flex-1 flex flex-col items-center justify-center border border-dashed border-slate-600 rounded-xl bg-slate-800/30 text-slate-400 py-12">
-                        <svg class="w-12 h-12 mb-4 opacity-50 animate-pulse-fast" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-                        <p class="text-sm">Awaiting incoming payment events from Kafka...</p>
-                    </div>
-                </div>
-            </div>
+<script>
+const API='http://localhost:5001';
+const NOTIFY='http://localhost:5003';
+let products=[];
+let orders=[];
+let cart=[];
 
-            <div id="tab-orders" class="tab-content">
-                <h2 class="text-2xl font-semibold text-slate-100 mb-6">Order Manager</h2>
-                <div class="glass-panel p-6 rounded-xl max-w-xl">
-                    <form id="createOrderForm" class="space-y-5" onsubmit="submitOrder(event)">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Customer Name</label>
-                            <input type="text" id="customerName" required placeholder="e.g. Alexey Ivanov" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-3 text-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Total Amount (RUB)</label>
-                            <input type="number" step="0.01" id="totalAmount" required placeholder="2500.00" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-3 text-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all">
-                        </div>
-                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-lg transition-colors flex justify-center items-center gap-2">
-                            <span>Dispatch Order</span>
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                        </button>
-                        <div id="orderResult" class="hidden p-4 rounded-lg text-sm mt-4 font-mono"></div>
-                    </form>
-                </div>
-            </div>
+const money=value=>new Intl.NumberFormat('en-DE',{style:'currency',currency:'EUR'}).format(value||0);
+const esc=value=>String(value??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+const statusClass=s=>String(s||'').toLowerCase().replace('pendingpayment','pending');
+const formatDate=v=>new Date(v).toLocaleString();
 
-            <div id="tab-health" class="tab-content">
-                <h2 class="text-2xl font-semibold text-slate-100 mb-6">System Health Matrix</h2>
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="glass-panel p-5 rounded-xl border-l-4 border-l-emerald-500 flex items-center justify-between">
-                        <div>
-                            <h3 class="text-sm font-bold text-slate-200">Order Service</h3>
-                            <p class="text-xs text-slate-400 mt-1">.NET 8 REST API (Port 5001)</p>
-                        </div>
-                        <span class="px-2 py-1 bg-emerald-500/10 text-emerald-400 text-xs rounded border border-emerald-500/20">Operational</span>
-                    </div>
-                    <div class="glass-panel p-5 rounded-xl border-l-4 border-l-emerald-500 flex items-center justify-between">
-                        <div>
-                            <h3 class="text-sm font-bold text-slate-200">Payment Service</h3>
-                            <p class="text-xs text-slate-400 mt-1">.NET 8 Worker (Port 5002)</p>
-                        </div>
-                        <span class="px-2 py-1 bg-emerald-500/10 text-emerald-400 text-xs rounded border border-emerald-500/20">Operational</span>
-                    </div>
-                    <div class="glass-panel p-5 rounded-xl border-l-4 border-l-emerald-500 flex items-center justify-between">
-                        <div>
-                            <h3 class="text-sm font-bold text-slate-200">Notification Service</h3>
-                            <p class="text-xs text-slate-400 mt-1">SignalR Hub (Port 5003)</p>
-                        </div>
-                        <span class="px-2 py-1 bg-emerald-500/10 text-emerald-400 text-xs rounded border border-emerald-500/20">Operational</span>
-                    </div>
-                    <div class="glass-panel p-5 rounded-xl border-l-4 border-l-emerald-500 flex items-center justify-between">
-                        <div>
-                            <h3 class="text-sm font-bold text-slate-200">Apache Kafka</h3>
-                            <p class="text-xs text-slate-400 mt-1">Message Broker (Port 9092)</p>
-                        </div>
-                        <span class="px-2 py-1 bg-emerald-500/10 text-emerald-400 text-xs rounded border border-emerald-500/20">Operational</span>
-                    </div>
-                    <div class="glass-panel p-5 rounded-xl border-l-4 border-l-emerald-500 flex items-center justify-between col-span-2">
-                        <div>
-                            <h3 class="text-sm font-bold text-slate-200">PostgreSQL Databases</h3>
-                            <p class="text-xs text-slate-400 mt-1">orders_db, payments_db</p>
-                        </div>
-                        <span class="px-2 py-1 bg-emerald-500/10 text-emerald-400 text-xs rounded border border-emerald-500/20">Operational</span>
-                    </div>
-                </div>
-            </div>
+function toast(message,type='success'){const el=document.createElement('div');el.className=`toast ${type}`;el.textContent=message;document.getElementById('toasts').appendChild(el);setTimeout(()=>el.remove(),4200)}
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+function openModal(id){document.getElementById(id).classList.add('open')}
+function showPage(page){document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));document.getElementById(`page-${page}`).classList.remove('hidden');document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('active',x.dataset.page===page));const titles={dashboard:['Operations dashboard','A live view of your order processing flow.'],catalog:['Product catalog','Manage products and inventory.'],orders:['Orders','Search, inspect and cancel pending orders.']};document.getElementById('pageTitle').textContent=titles[page][0];document.getElementById('pageSubtitle').textContent=titles[page][1];if(page==='catalog')loadProducts();if(page==='orders')loadOrders()}
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>showPage(b.dataset.page));
 
-        </div>
-    </main>
+async function api(path,options={}){const res=await fetch(`${API}${path}`,{headers:{'Content-Type':'application/json',...(options.headers||{})},...options});if(!res.ok){let message='Request failed';try{const data=await res.json();message=data.detail||data.message||data.title||message}catch{}throw new Error(message)}return res.status===204?null:res.json()}
 
-    <script>
-        let eventCount = 0;
-        let totalVolume = 0;
+async function refreshAll(){await Promise.all([loadProducts(),loadOrders(),loadDashboard()]);}
+async function loadProducts(){try{products=await api('/api/products');renderProducts()}catch(e){toast(e.message,'error')}}
+function renderProducts(){const query=(document.getElementById('productSearch')?.value||'').toLowerCase();const list=products.filter(p=>`${p.name} ${p.description}`.toLowerCase().includes(query));const root=document.getElementById('productGrid');if(!list.length){root.innerHTML='<div class="empty">No products yet. Create the first one.</div>';return}root.innerHTML=list.map(p=>`<article class="product"><div class="row-between"><div class="product-title">${esc(p.name)}</div><span class="badge ${p.stockQuantity>0?'info':'cancelled'}">${p.stockQuantity} in stock</span></div><div class="product-desc">${esc(p.description||'No description')}</div><div class="product-meta"><div class="price">${money(p.price)}</div><div class="stock">${p.isActive?'Active':'Hidden'}</div></div><div class="row"><button class="primary" style="flex:1" ${!p.isActive||p.stockQuantity<1?'disabled':''} onclick="addToCart('${p.id}')">Add to cart</button><button class="secondary" onclick="openProductModal('${p.id}')">Edit</button><button class="danger" onclick="archiveProduct('${p.id}')">×</button></div></article>`).join('')}
+function openProductModal(id){const p=products.find(x=>x.id===id);document.getElementById('productModalTitle').textContent=p?'Edit product':'New product';document.getElementById('productId').value=p?.id||'';document.getElementById('productName').value=p?.name||'';document.getElementById('productDescription').value=p?.description||'';document.getElementById('productPrice').value=p?.price||'';document.getElementById('productStock').value=p?.stockQuantity??0;document.getElementById('productActive').checked=p?.isActive??true;openModal('productModal')}
+async function saveProduct(event){event.preventDefault();const id=document.getElementById('productId').value;const body={name:document.getElementById('productName').value,description:document.getElementById('productDescription').value,price:Number(document.getElementById('productPrice').value),stockQuantity:Number(document.getElementById('productStock').value),isActive:document.getElementById('productActive').checked};try{if(id)await api(`/api/products/${id}`,{method:'PUT',body:JSON.stringify(body)});else await api('/api/products',{method:'POST',body:JSON.stringify(body)});closeModal('productModal');await loadProducts();toast(id?'Product updated':'Product created')}catch(e){toast(e.message,'error')}}
+async function archiveProduct(id){if(!confirm('Archive this product?'))return;try{await api(`/api/products/${id}`,{method:'DELETE'});await loadProducts();toast('Product archived')}catch(e){toast(e.message,'error')}}
+function addToCart(id){const p=products.find(x=>x.id===id);if(!p)return;const item=cart.find(x=>x.productId===id);if(item){if(item.quantity>=p.stockQuantity)return toast('Not enough stock','error');item.quantity++}else cart.push({productId:id,quantity:1});toast(`${p.name} added to cart`);openOrderModal();renderCart()}
+function changeQty(id,delta){const item=cart.find(x=>x.productId===id);if(!item)return;const p=products.find(x=>x.id===id);item.quantity+=delta;if(item.quantity<=0)cart=cart.filter(x=>x!==item);if(item.quantity>p.stockQuantity)item.quantity=p.stockQuantity;renderCart()}
+function renderCart(){const root=document.getElementById('cartItems');if(!cart.length){root.innerHTML='<div class="empty">Your cart is empty. Add products from the catalog.</div>';document.getElementById('cartTotal').textContent='€0.00';return}let total=0;root.innerHTML=cart.map(i=>{const p=products.find(x=>x.id===i.productId);const line=p.price*i.quantity;total+=line;return `<div class="cart-item"><div><strong>${esc(p.name)}</strong><div class="subtle">${money(p.price)} each</div></div><div class="qty"><button type="button" onclick="changeQty('${p.id}',-1)">−</button><strong>${i.quantity}</strong><button type="button" onclick="changeQty('${p.id}',1)">+</button></div><strong>${money(line)}</strong></div>`}).join('');document.getElementById('cartTotal').textContent=money(total)}
+function openOrderModal(){if(!products.length)loadProducts();renderCart();toggleCardField();openModal('orderModal')}
+function toggleCardField(){document.getElementById('cardField').classList.toggle('hidden',document.getElementById('paymentMethod').value!=='Card')}
+async function createOrder(event){event.preventDefault();if(!cart.length)return toast('Add at least one product','error');const method=document.getElementById('paymentMethod').value;const digits=document.getElementById('cardNumber').value.replace(/\D/g,'');const body={customerName:document.getElementById('customerName').value,customerEmail:document.getElementById('customerEmail').value,items:cart.map(x=>({productId:x.productId,quantity:x.quantity})),paymentMethod:method,cardLast4:method==='Card'?digits.slice(-4):null};try{const order=await api('/api/orders',{method:'POST',body:JSON.stringify(body)});cart=[];closeModal('orderModal');toast(`Order ${order.id.slice(0,8)} created`);await refreshAll();openOrderDetails(order.id)}catch(e){toast(e.message,'error')}}
 
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.getElementById('tab-' + tabId).classList.add('active');
+async function loadOrders(){try{const search=encodeURIComponent(document.getElementById('orderSearch')?.value||'');const status=encodeURIComponent(document.getElementById('orderStatus')?.value||'');orders=await api(`/api/orders?search=${search}&status=${status}`);renderOrders()}catch(e){toast(e.message,'error')}}
+function renderOrders(){const root=document.getElementById('ordersTable');if(!orders.length){root.innerHTML='<div class="empty">No orders found.</div>';return}root.innerHTML=`<table class="table"><thead><tr><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th><th>Payment</th><th>Created</th><th></th></tr></thead><tbody>${orders.map(o=>`<tr><td><strong>#${o.id.slice(0,8)}</strong></td><td>${esc(o.customerName)}</td><td>${o.itemCount}</td><td>${money(o.totalAmount)}</td><td><span class="badge ${statusClass(o.status)}">${esc(o.status)}</span></td><td>${esc(o.paymentMethod||'—')}</td><td>${formatDate(o.createdAt)}</td><td><button class="secondary" onclick="openOrderDetails('${o.id}')">View</button></td></tr>`).join('')}</tbody></table>`}
+async function openOrderDetails(id){try{const o=await api(`/api/orders/${id}`);document.getElementById('orderDetails').innerHTML=orderDetailsHtml(o);openModal('detailsModal');startOrderPolling(id)}catch(e){toast(e.message,'error')}}
+function orderDetailsHtml(o){const steps=['PendingPayment','Paid','Cancelled'];const current=o.status;return `<div class="detail-grid"><div><div class="section"><div class="row-between"><div><div class="subtle">Order</div><h2 style="margin:4px 0">#${o.id.slice(0,8)}</h2></div><span class="badge ${statusClass(o.status)}">${esc(o.status)}</span></div><div class="item-line"><span class="subtle">Customer</span><span>${esc(o.customerName)}</span></div><div class="item-line"><span class="subtle">Email</span><span>${esc(o.customerEmail)}</span></div><div class="item-line"><span class="subtle">Payment</span><span>${esc(o.paymentMethod)}</span></div><div class="item-line"><span class="subtle">Created</span><span>${formatDate(o.createdAt)}</span></div>${o.items.map(i=>`<div class="item-line"><span>${esc(i.productName)} × ${i.quantity}</span><strong>${money(i.lineTotal)}</strong></div>`).join('')}<div class="item-line"><strong>Total</strong><strong>${money(o.totalAmount)}</strong></div>${o.status==='PendingPayment'?`<button class="danger" onclick="cancelOrder('${o.id}')">Cancel order</button>`:''}</div></div><div><div class="section"><h3 style="margin-top:0">Order flow</h3><div class="timeline">${steps.map((s,i)=>{const done=s==='Paid'?current==='Paid':s==='PendingPayment'||(s==='Cancelled'&&current==='Cancelled');return `<div class="step ${done?'done':''}"><div class="step-marker">${i+1}</div><div><div class="title">${s}</div><div class="desc">${s==='PendingPayment'?'Order accepted and inventory reserved.':s==='Paid'?'Payment completed and order is ready.':'Compensating inventory and closing the order.'}</div></div></div>`}).join('')}</div></div></div></div>`}
+async function cancelOrder(id){try{await api(`/api/orders/${id}/cancel`,{method:'POST'});toast('Order cancelled');await loadOrders();await openOrderDetails(id);await loadProducts()}catch(e){toast(e.message,'error')}}
+function startOrderPolling(id){clearTimeout(window._orderPoll);const poll=async()=>{try{const o=await api(`/api/orders/${id}`);document.getElementById('orderDetails').innerHTML=orderDetailsHtml(o);if(o.status==='PendingPayment')window._orderPoll=setTimeout(poll,2500)}catch{}};window._orderPoll=setTimeout(poll,2500)}
 
-            const btnBaseClass = "w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-medium";
-            const btnInactive = btnBaseClass + " text-slate-300 hover:bg-slate-800";
-            const btnActive = btnBaseClass + " bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+async function loadDashboard(){try{const list=await api('/api/orders');const paid=list.filter(x=>x.status==='Paid');const pending=list.filter(x=>x.status==='PendingPayment');document.getElementById('statOrders').textContent=list.length;document.getElementById('statPaid').textContent=paid.length;document.getElementById('statPending').textContent=pending.length;document.getElementById('statRevenue').textContent=money(paid.reduce((sum,x)=>sum+x.totalAmount,0));document.getElementById('recentOrders').innerHTML=list.length?`<table class="table"><thead><tr><th>Order</th><th>Customer</th><th>Total</th><th>Status</th><th>Created</th></tr></thead><tbody>${list.slice(0,8).map(o=>`<tr><td><strong>#${o.id.slice(0,8)}</strong></td><td>${esc(o.customerName)}</td><td>${money(o.totalAmount)}</td><td><span class="badge ${statusClass(o.status)}">${esc(o.status)}</span></td><td>${formatDate(o.createdAt)}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">No orders yet.</div>'}catch(e){toast(e.message,'error')}}
 
-            document.getElementById('btn-dashboard').className = btnInactive;
-            document.getElementById('btn-orders').className = btnInactive;
-            document.getElementById('btn-health').className = btnInactive;
+async function connectRealtime(){try{const connection=new signalR.HubConnectionBuilder().withUrl(`${NOTIFY}/notifications`).withAutomaticReconnect().build();connection.on('ReceivePaymentUpdate',data=>{document.getElementById('lastEvent').textContent=`${data.status} · ${data.amount} €`;document.getElementById('lastEventTime').textContent=`Order #${String(data.orderId).slice(0,8)} · ${formatDate(data.timestamp)}`;toast(`Payment event: ${data.status}`);loadDashboard();loadOrders()});await connection.start()}catch(e){document.getElementById('liveStatus').textContent='Realtime unavailable';document.querySelector('.status-pill').style.background='rgba(255,176,32,.08)';setTimeout(connectRealtime,5000)}}
 
-            document.getElementById('btn-' + tabId).className = btnActive;
-        }
-
-        function showToast(title, message) {
-            const container = document.getElementById('toastContainer');
-            const toast = document.createElement('div');
-            toast.className = 'glass-panel p-4 rounded-xl border-l-4 border-l-emerald-500 shadow-2xl pointer-events-auto toast-animate flex flex-col';
-            toast.innerHTML = `
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">${title}</span>
-                        <span class="text-[10px] text-slate-500">Just now</span>
-                    </div>
-                    <p class="text-sm text-slate-200 mt-1 font-mono">${message}</p>
-                `;
-            container.appendChild(toast);
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transition = 'opacity 0.5s ease';
-                setTimeout(() => toast.remove(), 500);
-            }, 4000);
-        }
-
-        async function submitOrder(e) {
-            e.preventDefault();
-            const btn = e.target.querySelector('button');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<span class="animate-pulse">Processing...</span>';
-            btn.disabled = true;
-
-            const name = document.getElementById('customerName').value;
-            const amount = parseFloat(document.getElementById('totalAmount').value);
-            const resDiv = document.getElementById('orderResult');
-
-            try {
-                const response = await fetch('http://localhost:5001/api/orders', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ customerName: name, totalAmount: amount })
-                });
-
-                if (response.ok) {
-                    resDiv.className = "p-4 rounded-lg text-sm mt-4 font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 block";
-                    resDiv.textContent = "Success! Event routed to Kafka.";
-                    e.target.reset();
-                    setTimeout(() => switchTab('dashboard'), 1000);
-                } else {
-                    const err = await response.text();
-                    resDiv.className = "p-4 rounded-lg text-sm mt-4 font-mono bg-red-500/10 text-red-400 border border-red-500/20 block";
-                    resDiv.textContent = "Error: " + err;
-                }
-            } catch (err) {
-                resDiv.className = "p-4 rounded-lg text-sm mt-4 font-mono bg-red-500/10 text-red-400 border border-red-500/20 block";
-                resDiv.textContent = "Connection failed. Check OrderService on port 5001.";
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-        }
-
-        const statusBadge = document.getElementById('statusBadge');
-        const eventsContainer = document.getElementById('eventsContainer');
-        const emptyState = document.getElementById('emptyState');
-        const counterEl = document.getElementById('eventCounter');
-
-        const connection = new signalR.HubConnectionBuilder()
-            .withUrl("http://localhost:5003/notifications")
-            .withAutomaticReconnect()
-            .build();
-
-        connection.on("ReceivePaymentUpdate", (data) => {
-            if (emptyState) emptyState.style.display = 'none';
-
-            eventCount++;
-            totalVolume += data.amount;
-
-            counterEl.textContent = `Events caught: ${eventCount}`;
-            document.getElementById('statCount').textContent = eventCount;
-            document.getElementById('statVolume').textContent = new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB' }).format(totalVolume);
-            document.getElementById('statAvg').textContent = new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB' }).format(totalVolume / eventCount);
-
-            const card = document.createElement('div');
-            card.className = 'glass-panel p-5 rounded-xl grid grid-cols-2 md:grid-cols-4 gap-4 items-center';
-            card.style.animation = 'fadeIn 0.4s ease-out';
-
-            const formattedAmount = new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB' }).format(data.amount);
-            const time = new Date(data.timestamp).toLocaleTimeString('ru-RU');
-
-            card.innerHTML = `
-                    <div class="flex flex-col">
-                        <span class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">Order ID</span>
-                        <span class="text-xs text-slate-300 font-mono truncate" title="${data.orderId}">${data.orderId.substring(0, 8)}...</span>
-                    </div>
-                    <div class="flex flex-col">
-                        <span class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">Payment ID</span>
-                        <span class="text-xs text-slate-300 font-mono truncate" title="${data.paymentId}">${data.paymentId.substring(0, 8)}...</span>
-                    </div>
-                    <div class="flex flex-col">
-                        <span class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">Amount</span>
-                        <span class="text-sm text-slate-100 font-mono font-bold">${formattedAmount}</span>
-                    </div>
-                    <div class="flex flex-col items-end">
-                        <span class="px-2 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded text-xs font-bold neon-glow">
-                            ${data.status} • ${time}
-                        </span>
-                    </div>
-                `;
-            eventsContainer.prepend(card);
-
-            showToast("Payment Succeeded", `Order #${data.orderId.substring(0, 6)} processed for ${formattedAmount}`);
-        });
-
-        connection.start()
-            .then(() => {
-                statusBadge.className = "flex items-center gap-2 px-3 py-2 rounded border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 text-xs font-semibold";
-                statusBadge.innerHTML = '<div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse-fast"></div><span>SignalR Connected</span>';
-            })
-            .catch(err => console.error(err));
-    </script>
+async function boot(){showPage('dashboard');await refreshAll();connectRealtime()}
+boot();
+</script>
 </body>
 </html>
