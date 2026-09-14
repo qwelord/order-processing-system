@@ -14,10 +14,14 @@ public record ProcessPaymentResponse(
     decimal Amount,
     string Status,
     string PaymentMethod,
+    string? CardLast4,
     DateTime ProcessedAt);
 
 public interface IPaymentClient
 {
     [Post("/api/payments/process")]
     Task<ProcessPaymentResponse> ProcessPaymentAsync([Body] ProcessPaymentRequest request);
+
+    [Get("/api/payments")]
+    Task<IReadOnlyList<ProcessPaymentResponse>> GetPaymentsAsync([Query] Guid orderId);
 }

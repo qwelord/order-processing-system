@@ -33,6 +33,13 @@ public class OrdersController : ControllerBase
         return CreatedAtAction(nameof(GetOrderById), new { id = order.Id }, order);
     }
 
+    [HttpPost("{id:guid}/pay")]
+    public async Task<IActionResult> PayOrder(Guid id, [FromBody] PayOrderDto dto, CancellationToken cancellationToken)
+    {
+        var order = await _mediator.Send(new PayOrderCommand(id, dto), cancellationToken);
+        return Ok(order);
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetOrderById(Guid id, CancellationToken cancellationToken)
     {

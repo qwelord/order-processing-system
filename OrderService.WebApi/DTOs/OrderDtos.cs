@@ -8,8 +8,9 @@ public record CreateOrderDto(
     string CustomerName,
     string CustomerEmail,
     IReadOnlyCollection<CreateOrderItemDto> Items,
-    string PaymentMethod,
-    string? CardLast4);
+    string PaymentMethod);
+
+public record PayOrderDto(string CardLast4);
 
 public record OrderItemResponseDto(
     Guid ProductId,
