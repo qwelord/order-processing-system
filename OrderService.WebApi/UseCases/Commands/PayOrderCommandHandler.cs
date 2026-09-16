@@ -9,9 +9,9 @@ using OrderService.WebApi.DTOs;
 
 namespace OrderService.WebApi.UseCases.Commands;
 
-public record PayOrderCommand(Guid OrderId, PayOrderDto Payment) : IRequest<OrderResponseDto>;
+public sealed record PayOrderCommand(Guid OrderId, PayOrderDto Payment) : IRequest<OrderResponseDto>;
 
-public class PayOrderCommandHandler : IRequestHandler<PayOrderCommand, OrderResponseDto>
+public sealed class PayOrderCommandHandler : IRequestHandler<PayOrderCommand, OrderResponseDto>
 {
     private readonly OrderDbContext _db;
     private readonly IPaymentClient _paymentClient;
@@ -22,35 +22,42 @@ public class PayOrderCommandHandler : IRequestHandler<PayOrderCommand, OrderResp
         _paymentClient = paymentClient;
     }
 
-    public async Task<OrderResponseDto> Handle(PayOrderCommand request, CancellationToken cancellationToken)
+    public async Task<OrderResponseDto> Handle(
+        PayOrderCommand request,
+        CancellationToken cancellationToken)
     {
         var order = await _db.Orders
-            .Include(item => item.Items)
-            .FirstOrDefaultAsync(item => item.Id == request.OrderId, cancellationToken);
+            .Include(order => order.Items)
+            .FirstOrDefaultAsync(order => order.Id == request.OrderId, cancellationToken);
 
         if (order is null)
             throw new KeyNotFoundException("Order was not found.");
 
         if (order.Status == OrderStatus.Paid)
-            throw new ValidationException(new[] { new ValidationFailure("Order", "Order has already been paid.") });
+        {
+            throw new ValidationException([
+                new ValidationFailure(
+                    nameof(PayOrderCommand.OrderId),
+                    "Order has already been paid.")
+            ]);
+        }
 
         if (order.Status == OrderStatus.Cancelled)
-            throw new ValidationException(new[] { new ValidationFailure("Order", "Cancelled orders cannot be paid.") });
-
-        if (order.PaymentMethod != "Card")
-            throw new ValidationException(new[]
-            {
-                new ValidationFailure("PaymentMethod", "Only card orders can be paid online.")
-            });
-
-        if (string.IsNullOrWhiteSpace(request.Payment.CardLast4) ||
-            request.Payment.CardLast4.Length != 4 ||
-            !request.Payment.CardLast4.All(char.IsDigit))
         {
-            throw new ValidationException(new[]
-            {
-                new ValidationFailure("CardLast4", "Enter the last four digits of the card number.")
-            });
+            throw new ValidationException([
+                new ValidationFailure(
+                    nameof(PayOrderCommand.OrderId),
+                    "Cancelled orders cannot be paid.")
+            ]);
+        }
+
+        if (!order.UsesCardPayment())
+        {
+            throw new ValidationException([
+                new ValidationFailure(
+                    "PaymentMethod",
+                    "Only card orders can be paid online.")
+            ]);
         }
 
         ProcessPaymentResponse payment;
@@ -61,42 +68,46 @@ public class PayOrderCommandHandler : IRequestHandler<PayOrderCommand, OrderResp
                 new ProcessPaymentRequest(
                     order.Id,
                     order.TotalAmount,
-                    order.PaymentMethod,
-                    request.Payment.CardLast4));
+                    order.PaymentMethod.ToString(),
+                    request.Payment.CardLast4),
+                cancellationToken);
         }
         catch
         {
             var existingPayment = await FindExistingPaymentAsync(order.Id, cancellationToken);
 
             if (existingPayment?.Status == "Completed")
-            {
-                order.Status = OrderStatus.Paid;
-                await _db.SaveChangesAsync(cancellationToken);
-                return ToResponse(order);
-            }
+                return await MarkPaidAsync(order, cancellationToken);
 
             if (existingPayment?.Status == "Failed")
                 return await CancelAndReleaseStockAsync(order, cancellationToken);
 
-            throw;
+            throw new InvalidOperationException("Payment result could not be confirmed.");
         }
 
         if (payment.Status == "Completed")
-        {
-            order.Status = OrderStatus.Paid;
-            await _db.SaveChangesAsync(cancellationToken);
-            return ToResponse(order);
-        }
+            return await MarkPaidAsync(order, cancellationToken);
 
-        return await CancelAndReleaseStockAsync(order, cancellationToken);
+        if (payment.Status == "Failed")
+            return await CancelAndReleaseStockAsync(order, cancellationToken);
+
+        throw new ValidationException(
+            "Payment service returned an unsupported status.");
     }
 
-    private async Task<ProcessPaymentResponse?> FindExistingPaymentAsync(Guid orderId, CancellationToken cancellationToken)
+    private async Task<ProcessPaymentResponse?> FindExistingPaymentAsync(
+        Guid orderId,
+        CancellationToken cancellationToken)
     {
         try
         {
-            var payments = await _paymentClient.GetPaymentsAsync(orderId);
-            return payments.OrderByDescending(item => item.ProcessedAt).FirstOrDefault();
+            var payments = await _paymentClient.GetPaymentsAsync(
+                orderId,
+                cancellationToken);
+
+            return payments
+                .OrderByDescending(payment => payment.ProcessedAt)
+                .FirstOrDefault();
         }
         catch
         {
@@ -104,9 +115,25 @@ public class PayOrderCommandHandler : IRequestHandler<PayOrderCommand, OrderResp
         }
     }
 
-    private async Task<OrderResponseDto> CancelAndReleaseStockAsync(Order order, CancellationToken cancellationToken)
+    private async Task<OrderResponseDto> MarkPaidAsync(
+        Order order,
+        CancellationToken cancellationToken)
     {
-        var productIds = order.Items.Select(item => item.ProductId).ToArray();
+        order.MarkPaid();
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return OrderResponseDto.FromEntity(order);
+    }
+
+    private async Task<OrderResponseDto> CancelAndReleaseStockAsync(
+        Order order,
+        CancellationToken cancellationToken)
+    {
+        var productIds = order.Items
+            .Select(item => item.ProductId)
+            .ToArray();
+
         var products = await _db.Products
             .Where(product => productIds.Contains(product.Id))
             .ToDictionaryAsync(product => product.Id, cancellationToken);
@@ -114,26 +141,13 @@ public class PayOrderCommandHandler : IRequestHandler<PayOrderCommand, OrderResp
         foreach (var item in order.Items)
         {
             if (products.TryGetValue(item.ProductId, out var product))
-                product.StockQuantity += item.Quantity;
+                product.ReleaseStock(item.Quantity);
         }
 
-        order.Status = OrderStatus.Cancelled;
-        await _db.SaveChangesAsync(cancellationToken);
-        return ToResponse(order);
-    }
+        order.Cancel();
 
-    private static OrderResponseDto ToResponse(Order order) => new(
-        order.Id,
-        order.CustomerName,
-        order.CustomerEmail,
-        order.TotalAmount,
-        order.Status.ToString(),
-        order.PaymentMethod,
-        order.CreatedAt,
-        order.Items.Select(item => new OrderItemResponseDto(
-            item.ProductId,
-            item.ProductName,
-            item.UnitPrice,
-            item.Quantity,
-            item.LineTotal)).ToList());
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return OrderResponseDto.FromEntity(order);
+    }
 }

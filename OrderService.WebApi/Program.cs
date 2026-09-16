@@ -10,37 +10,37 @@ using Refit;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? ["http://localhost:5003", "http://127.0.0.1:5003"];
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("Frontend", policy =>
     {
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+        policy.WithOrigins(allowedOrigins)
+            .AllowAnyMethod()
+            .AllowAnyHeader();
     });
 });
 
 builder.Services.AddControllers(options => options.Filters.Add<ValidationExceptionFilter>());
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
 builder.Services.AddDbContext<OrderDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddMediatR(cfg =>
 {
     cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
-    cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+    cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
 });
 
-builder.Services.AddValidatorsFromAssemblyContaining<CreateOrderDtoValidator>();
-builder.Services.AddAutoMapper(typeof(Program).Assembly);
+builder.Services.AddValidatorsFromAssemblyContaining<CreateOrderCommandValidator>();
 
 var paymentServiceUrl = builder.Configuration["PaymentService:BaseUrl"] ?? "http://localhost:5002";
-builder.Services.AddHttpClient("PaymentClient", c => c.BaseAddress = new Uri(paymentServiceUrl));
-builder.Services.AddTransient(sp =>
-{
-    var client = sp.GetRequiredService<IHttpClientFactory>().CreateClient("PaymentClient");
-    return RestService.For<IPaymentClient>(client);
-});
+builder.Services
+    .AddRefitClient<IPaymentClient>()
+    .ConfigureHttpClient(client => client.BaseAddress = new Uri(paymentServiceUrl));
 
 var app = builder.Build();
 
@@ -48,15 +48,47 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<OrderDbContext>();
     db.Database.Migrate();
+
     if (!db.Products.Any())
     {
         db.Products.AddRange(
-            new OrderService.DataAccess.Entities.Product { Id = Guid.NewGuid(), Name = "Aurora Laptop 14", Description = "Lightweight 14-inch laptop for work and study.", Price = 1199.00m, StockQuantity = 12, IsActive = true, CreatedAt = DateTime.UtcNow },
-            new OrderService.DataAccess.Entities.Product { Id = Guid.NewGuid(), Name = "Orbit Mechanical Keyboard", Description = "Compact mechanical keyboard with hot-swappable switches.", Price = 129.00m, StockQuantity = 28, IsActive = true, CreatedAt = DateTime.UtcNow },
-            new OrderService.DataAccess.Entities.Product { Id = Guid.NewGuid(), Name = "Pulse Wireless Mouse", Description = "Ergonomic wireless mouse with silent clicks.", Price = 59.90m, StockQuantity = 36, IsActive = true, CreatedAt = DateTime.UtcNow },
-            new OrderService.DataAccess.Entities.Product { Id = Guid.NewGuid(), Name = "Nova USB-C Dock", Description = "Multi-port dock with HDMI, USB and Ethernet.", Price = 89.00m, StockQuantity = 19, IsActive = true, CreatedAt = DateTime.UtcNow },
-            new OrderService.DataAccess.Entities.Product { Id = Guid.NewGuid(), Name = "Echo Headphones", Description = "Closed-back wireless headphones with ANC.", Price = 179.00m, StockQuantity = 16, IsActive = true, CreatedAt = DateTime.UtcNow },
-            new OrderService.DataAccess.Entities.Product { Id = Guid.NewGuid(), Name = "Flux Monitor 27", Description = "27-inch QHD monitor with a 100 Hz panel.", Price = 299.00m, StockQuantity = 9, IsActive = true, CreatedAt = DateTime.UtcNow });
+            OrderService.DataAccess.Entities.Product.Create(
+                "Aurora Laptop 14",
+                "Lightweight 14-inch laptop for work and study.",
+                1199.00m,
+                12,
+                DateTime.UtcNow),
+            OrderService.DataAccess.Entities.Product.Create(
+                "Orbit Mechanical Keyboard",
+                "Compact mechanical keyboard with hot-swappable switches.",
+                129.00m,
+                28,
+                DateTime.UtcNow),
+            OrderService.DataAccess.Entities.Product.Create(
+                "Pulse Wireless Mouse",
+                "Ergonomic wireless mouse with silent clicks.",
+                59.90m,
+                36,
+                DateTime.UtcNow),
+            OrderService.DataAccess.Entities.Product.Create(
+                "Nova USB-C Dock",
+                "Multi-port dock with HDMI, USB and Ethernet.",
+                89.00m,
+                19,
+                DateTime.UtcNow),
+            OrderService.DataAccess.Entities.Product.Create(
+                "Echo Headphones",
+                "Closed-back wireless headphones with ANC.",
+                179.00m,
+                16,
+                DateTime.UtcNow),
+            OrderService.DataAccess.Entities.Product.Create(
+                "Flux Monitor 27",
+                "27-inch QHD monitor with a 100 Hz panel.",
+                299.00m,
+                9,
+                DateTime.UtcNow));
+
         db.SaveChanges();
     }
 }
@@ -67,7 +99,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseCors("AllowAll");
+app.UseCors("Frontend");
 app.UseAuthorization();
 app.MapControllers();
 

@@ -1,6 +1,7 @@
 using FluentValidation;
 using FluentValidation.Results;
 using MediatR;
+using OrderService.DataAccess.Constants;
 using Microsoft.EntityFrameworkCore;
 using OrderService.DataAccess;
 using OrderService.DataAccess.Entities;
@@ -8,9 +9,9 @@ using OrderService.WebApi.DTOs;
 
 namespace OrderService.WebApi.UseCases.Commands;
 
-public record CreateOrderCommand(CreateOrderDto OrderDto) : IRequest<OrderResponseDto>;
+public sealed record CreateOrderCommand(CreateOrderDto OrderDto) : IRequest<OrderResponseDto>;
 
-public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, OrderResponseDto>
+public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, OrderResponseDto>
 {
     private readonly OrderDbContext _db;
 
@@ -32,64 +33,30 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Ord
             .ToDictionaryAsync(product => product.Id, cancellationToken);
 
         if (products.Count != productIds.Length)
-            throw new ValidationException(new[]
-            {
-                new ValidationFailure("Items", "One or more products are unavailable.")
-            });
+            throw new ValidationException([new ValidationFailure("Items", "One or more products are unavailable.")]);
 
-        var order = new Order
-        {
-            Id = Guid.NewGuid(),
-            CustomerName = request.OrderDto.CustomerName.Trim(),
-            CustomerEmail = request.OrderDto.CustomerEmail.Trim().ToLowerInvariant(),
-            PaymentMethod = request.OrderDto.PaymentMethod,
-            Status = OrderStatus.PendingPayment,
-            CreatedAt = DateTime.UtcNow
-        };
+        var order = Order.Create(
+            request.OrderDto.CustomerName.Trim(),
+            request.OrderDto.CustomerEmail.Trim().ToLowerInvariant(),
+            PaymentMethods.Parse(request.OrderDto.PaymentMethod),
+            DateTime.UtcNow);
 
         foreach (var item in items)
         {
             var product = products[item.ProductId];
-            if (product.StockQuantity < item.Quantity)
-                throw new ValidationException(new[]
-                {
-                    new ValidationFailure("Items", $"Not enough stock for product '{product.Name}'.")
-                });
+            if (!product.TryReserveStock(item.Quantity))
+                throw new ValidationException([new ValidationFailure("Items", $"Not enough stock for product '{product.Name}'.")]);
 
-            product.StockQuantity -= item.Quantity;
-
-            var lineTotal = product.Price * item.Quantity;
-            order.Items.Add(new OrderItem
-            {
-                Id = Guid.NewGuid(),
-                ProductId = product.Id,
-                ProductName = product.Name,
-                UnitPrice = product.Price,
-                Quantity = item.Quantity,
-                LineTotal = lineTotal
-            });
-
-            order.TotalAmount += lineTotal;
+            order.AddItem(OrderItem.Create(
+                product.Id,
+                product.Name,
+                product.Price,
+                item.Quantity));
         }
 
         _db.Orders.Add(order);
         await _db.SaveChangesAsync(cancellationToken);
 
-        return ToResponse(order);
+        return OrderResponseDto.FromEntity(order);
     }
-
-    private static OrderResponseDto ToResponse(Order order) => new(
-        order.Id,
-        order.CustomerName,
-        order.CustomerEmail,
-        order.TotalAmount,
-        order.Status.ToString(),
-        order.PaymentMethod,
-        order.CreatedAt,
-        order.Items.Select(item => new OrderItemResponseDto(
-            item.ProductId,
-            item.ProductName,
-            item.UnitPrice,
-            item.Quantity,
-            item.LineTotal)).ToList());
 }

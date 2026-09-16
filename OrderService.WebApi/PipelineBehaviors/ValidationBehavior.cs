@@ -1,42 +1,38 @@
-﻿using FluentValidation;
+using FluentValidation;
 using MediatR;
 
 namespace OrderService.WebApi.PipelineBehaviors;
 
-public class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
-    where TRequest : IRequest<TResponse>
+public sealed class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+    where TRequest : notnull
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IEnumerable<IValidator<TRequest>> _validators;
 
-    public ValidationBehavior(IServiceProvider serviceProvider)
+    public ValidationBehavior(IEnumerable<IValidator<TRequest>> validators)
     {
-        _serviceProvider = serviceProvider;
+        _validators = validators;
     }
 
-    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
+    public async Task<TResponse> Handle(
+        TRequest request,
+        RequestHandlerDelegate<TResponse> next,
+        CancellationToken cancellationToken)
     {
-        var properties = request.GetType().GetProperties();
+        if (!_validators.Any())
+            return await next(cancellationToken);
 
-        foreach (var prop in properties)
-        {
-            var propValue = prop.GetValue(request);
-            if (propValue == null) continue;
+        var context = new ValidationContext<TRequest>(request);
+        var results = await Task.WhenAll(
+            _validators.Select(validator => validator.ValidateAsync(context, cancellationToken)));
 
-            var validatorType = typeof(IValidator<>).MakeGenericType(prop.PropertyType);
-            var validator = _serviceProvider.GetService(validatorType) as IValidator;
+        var failures = results
+            .SelectMany(result => result.Errors)
+            .Where(error => error is not null)
+            .ToList();
 
-            if (validator != null)
-            {
-                var context = new ValidationContext<object>(propValue);
-                var result = await validator.ValidateAsync(context, cancellationToken);
+        if (failures.Count > 0)
+            throw new ValidationException(failures);
 
-                if (!result.IsValid)
-                {
-                    throw new ValidationException(result.Errors);
-                }
-            }
-        }
-
-        return await next();
+        return await next(cancellationToken);
     }
 }

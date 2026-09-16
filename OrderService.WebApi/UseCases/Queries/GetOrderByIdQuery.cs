@@ -5,9 +5,9 @@ using OrderService.WebApi.DTOs;
 
 namespace OrderService.WebApi.UseCases.Queries;
 
-public record GetOrderByIdQuery(Guid OrderId) : IRequest<OrderResponseDto?>;
+public sealed record GetOrderByIdQuery(Guid OrderId) : IRequest<OrderResponseDto?>;
 
-public class GetOrderByIdQueryHandler : IRequestHandler<GetOrderByIdQuery, OrderResponseDto?>
+public sealed class GetOrderByIdQueryHandler : IRequestHandler<GetOrderByIdQuery, OrderResponseDto?>
 {
     private readonly OrderDbContext _db;
 
@@ -20,19 +20,9 @@ public class GetOrderByIdQueryHandler : IRequestHandler<GetOrderByIdQuery, Order
     {
         var order = await _db.Orders
             .AsNoTracking()
-            .Include(x => x.Items)
-            .FirstOrDefaultAsync(x => x.Id == request.OrderId, cancellationToken);
+            .Include(order => order.Items)
+            .FirstOrDefaultAsync(order => order.Id == request.OrderId, cancellationToken);
 
-        if (order is null) return null;
-
-        return new OrderResponseDto(
-            order.Id,
-            order.CustomerName,
-            order.CustomerEmail,
-            order.TotalAmount,
-            order.Status.ToString(),
-            order.PaymentMethod,
-            order.CreatedAt,
-            order.Items.Select(x => new OrderItemResponseDto(x.ProductId, x.ProductName, x.UnitPrice, x.Quantity, x.LineTotal)).ToList());
+        return order is null ? null : OrderResponseDto.FromEntity(order);
     }
 }

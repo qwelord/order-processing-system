@@ -1,20 +1,20 @@
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using OrderService.DataAccess;
-using OrderService.DataAccess.Entities;
 using OrderService.WebApi.DTOs;
+using OrderService.WebApi.UseCases.Commands;
+using OrderService.WebApi.UseCases.Queries;
 
 namespace OrderService.WebApi.Controllers;
 
 [ApiController]
 [Route("api/products")]
-public class ProductsController : ControllerBase
+public sealed class ProductsController : ControllerBase
 {
-    private readonly OrderDbContext _db;
+    private readonly IMediator _mediator;
 
-    public ProductsController(OrderDbContext db)
+    public ProductsController(IMediator mediator)
     {
-        _db = db;
+        _mediator = mediator;
     }
 
     [HttpGet]
@@ -23,81 +23,45 @@ public class ProductsController : ControllerBase
         [FromQuery] bool includeInactive = false,
         CancellationToken cancellationToken = default)
     {
-        var query = _db.Products.AsNoTracking();
-
-        if (!includeInactive)
-            query = query.Where(x => x.IsActive);
-
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            var value = search.Trim();
-            query = query.Where(x => x.Name.Contains(value) || x.Description.Contains(value));
-        }
-
-        var products = await query
-            .OrderBy(x => x.Name)
-            .Select(x => new ProductDto(x.Id, x.Name, x.Description, x.Price, x.StockQuantity, x.IsActive, x.CreatedAt))
-            .ToListAsync(cancellationToken);
+        var products = await _mediator.Send(
+            new ListProductsQuery(search, includeInactive),
+            cancellationToken);
 
         return Ok(products);
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<ProductDto>> GetProduct(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<ProductDto>> GetProduct(
+        Guid id,
+        CancellationToken cancellationToken)
     {
-        var product = await _db.Products.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (product is null) return NotFound();
-        return Ok(new ProductDto(product.Id, product.Name, product.Description, product.Price, product.StockQuantity, product.IsActive, product.CreatedAt));
+        var product = await _mediator.Send(new GetProductByIdQuery(id), cancellationToken);
+        return product is null ? NotFound() : Ok(product);
     }
 
     [HttpPost]
-    public async Task<ActionResult<ProductDto>> CreateProduct(CreateProductDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<ProductDto>> CreateProduct(
+        [FromBody] CreateProductDto dto,
+        CancellationToken cancellationToken)
     {
-        if (dto.Price <= 0 || dto.StockQuantity < 0) return BadRequest("Price must be positive and stock cannot be negative.");
-
-        var product = new Product
-        {
-            Id = Guid.NewGuid(),
-            Name = dto.Name.Trim(),
-            Description = dto.Description?.Trim() ?? string.Empty,
-            Price = dto.Price,
-            StockQuantity = dto.StockQuantity,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _db.Products.Add(product);
-        await _db.SaveChangesAsync(cancellationToken);
-
-        return CreatedAtAction(nameof(GetProduct), new { id = product.Id },
-            new ProductDto(product.Id, product.Name, product.Description, product.Price, product.StockQuantity, product.IsActive, product.CreatedAt));
+        var product = await _mediator.Send(new CreateProductCommand(dto), cancellationToken);
+        return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, product);
     }
 
     [HttpPut("{id:guid}")]
-    public async Task<IActionResult> UpdateProduct(Guid id, UpdateProductDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<ProductDto>> UpdateProduct(
+        Guid id,
+        [FromBody] UpdateProductDto dto,
+        CancellationToken cancellationToken)
     {
-        if (dto.Price <= 0 || dto.StockQuantity < 0) return BadRequest("Price must be positive and stock cannot be negative.");
-
-        var product = await _db.Products.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (product is null) return NotFound();
-
-        product.Name = dto.Name.Trim();
-        product.Description = dto.Description?.Trim() ?? string.Empty;
-        product.Price = dto.Price;
-        product.StockQuantity = dto.StockQuantity;
-        product.IsActive = dto.IsActive;
-
-        await _db.SaveChangesAsync(cancellationToken);
-        return NoContent();
+        var product = await _mediator.Send(new UpdateProductCommand(id, dto), cancellationToken);
+        return product is null ? NotFound() : Ok(product);
     }
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteProduct(Guid id, CancellationToken cancellationToken)
     {
-        var product = await _db.Products.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (product is null) return NotFound();
-        product.IsActive = false;
-        await _db.SaveChangesAsync(cancellationToken);
-        return NoContent();
+        var archived = await _mediator.Send(new ArchiveProductCommand(id), cancellationToken);
+        return archived ? NoContent() : NotFound();
     }
 }

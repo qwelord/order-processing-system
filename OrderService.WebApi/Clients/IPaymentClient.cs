@@ -2,13 +2,13 @@ using Refit;
 
 namespace OrderService.WebApi.Clients;
 
-public record ProcessPaymentRequest(
+public sealed record ProcessPaymentRequest(
     Guid OrderId,
     decimal Amount,
     string PaymentMethod,
     string? CardLast4);
 
-public record ProcessPaymentResponse(
+public sealed record ProcessPaymentResponse(
     Guid Id,
     Guid OrderId,
     decimal Amount,
@@ -20,8 +20,12 @@ public record ProcessPaymentResponse(
 public interface IPaymentClient
 {
     [Post("/api/payments/process")]
-    Task<ProcessPaymentResponse> ProcessPaymentAsync([Body] ProcessPaymentRequest request);
+    Task<ProcessPaymentResponse> ProcessPaymentAsync(
+        [Body] ProcessPaymentRequest request,
+        CancellationToken cancellationToken = default);
 
     [Get("/api/payments")]
-    Task<IReadOnlyList<ProcessPaymentResponse>> GetPaymentsAsync([Query] Guid orderId);
+    Task<IReadOnlyList<ProcessPaymentResponse>> GetPaymentsAsync(
+        [Query] Guid orderId,
+        CancellationToken cancellationToken = default);
 }

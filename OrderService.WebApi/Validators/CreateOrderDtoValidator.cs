@@ -1,33 +1,40 @@
 using FluentValidation;
+using OrderService.DataAccess.Constants;
 using OrderService.WebApi.DTOs;
 
 namespace OrderService.WebApi.Validators;
 
-public class CreateOrderDtoValidator : AbstractValidator<CreateOrderDto>
+public sealed class CreateOrderDtoValidator : AbstractValidator<CreateOrderDto>
 {
     public CreateOrderDtoValidator()
     {
         RuleFor(order => order.CustomerName)
             .NotEmpty()
-            .MaximumLength(200);
+            .MaximumLength(OrderLimits.CustomerNameMaxLength);
 
         RuleFor(order => order.CustomerEmail)
             .NotEmpty()
             .EmailAddress()
-            .MaximumLength(320);
+            .MaximumLength(OrderLimits.CustomerEmailMaxLength);
 
         RuleFor(order => order.Items)
             .NotEmpty();
 
         RuleForEach(order => order.Items)
-            .ChildRules(item =>
-            {
-                item.RuleFor(value => value.ProductId).NotEmpty();
-                item.RuleFor(value => value.Quantity).InclusiveBetween(1, 100);
-            });
+            .SetValidator(new CreateOrderItemValidator());
 
         RuleFor(order => order.PaymentMethod)
-            .Must(method => method is "Card" or "CashOnDelivery")
-            .WithMessage("Payment method must be Card or CashOnDelivery.");
+            .Must(PaymentMethods.IsSupported)
+            .WithMessage($"Payment method must be {PaymentMethods.Card} or {PaymentMethods.CashOnDelivery}.");
+    }
+
+    private sealed class CreateOrderItemValidator : AbstractValidator<CreateOrderItemDto>
+    {
+        public CreateOrderItemValidator()
+        {
+            RuleFor(item => item.ProductId).NotEmpty();
+            RuleFor(item => item.Quantity)
+                .InclusiveBetween(OrderLimits.ProductQuantityMin, OrderLimits.ProductQuantityMax);
+        }
     }
 }
