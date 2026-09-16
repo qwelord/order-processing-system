@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Moq;
 using NUnit.Framework;
 using OrderService.DataAccess;
+using OrderService.DataAccess.Constants;
 using OrderService.DataAccess.Entities;
 using OrderService.WebApi.Clients;
 using OrderService.WebApi.DTOs;
@@ -10,7 +11,7 @@ using OrderService.WebApi.UseCases.Commands;
 namespace OrderService.Tests;
 
 [TestFixture]
-public class PayOrderCommandHandlerTests
+public sealed class PayOrderCommandHandlerTests
 {
     private OrderDbContext _dbContext = null!;
     private Mock<IPaymentClient> _paymentClient = null!;
@@ -29,40 +30,22 @@ public class PayOrderCommandHandlerTests
         _paymentClient = new Mock<IPaymentClient>();
         _handler = new PayOrderCommandHandler(_dbContext, _paymentClient.Object);
 
-        _product = new Product
-        {
-            Id = Guid.NewGuid(),
-            Name = "Laptop",
-            Price = 1500m,
-            StockQuantity = 2,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        };
+        _product = Product.Create(
+            "Laptop",
+            "Test product",
+            1500m,
+            2,
+            DateTime.UtcNow);
 
-        _order = new Order
-        {
-            Id = Guid.NewGuid(),
-            CustomerName = "Алексей",
-            CustomerEmail = "alex@example.com",
-            PaymentMethod = "Card",
-            Status = OrderStatus.PendingPayment,
-            TotalAmount = 1500m,
-            CreatedAt = DateTime.UtcNow,
-            Items = new List<OrderItem>
-            {
-                new()
-                {
-                    Id = Guid.NewGuid(),
-                    ProductId = _product.Id,
-                    ProductName = _product.Name,
-                    UnitPrice = _product.Price,
-                    Quantity = 1,
-                    LineTotal = 1500m
-                }
-            }
-        };
+        _product.TryReserveStock(1);
 
-        _product.StockQuantity = 1;
+        _order = Order.Create(
+            "Alex",
+            "alex@example.com",
+            PaymentMethod.Card,
+            DateTime.UtcNow);
+        _order.AddItem(OrderItem.Create(_product.Id, _product.Name, _product.Price, 1));
+
         _dbContext.Products.Add(_product);
         _dbContext.Orders.Add(_order);
         await _dbContext.SaveChangesAsync();
@@ -79,13 +62,15 @@ public class PayOrderCommandHandlerTests
     public async Task Handle_ShouldMarkOrderPaid_WhenPaymentSucceeds()
     {
         _paymentClient
-            .Setup(client => client.ProcessPaymentAsync(It.IsAny<ProcessPaymentRequest>()))
+            .Setup(client => client.ProcessPaymentAsync(
+                It.IsAny<ProcessPaymentRequest>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ProcessPaymentResponse(
                 Guid.NewGuid(),
                 _order.Id,
                 1500m,
                 "Completed",
-                "Card",
+                PaymentMethods.Card,
                 "4242",
                 DateTime.UtcNow));
 
@@ -102,13 +87,15 @@ public class PayOrderCommandHandlerTests
     public async Task Handle_ShouldCancelOrderAndReleaseStock_WhenPaymentFails()
     {
         _paymentClient
-            .Setup(client => client.ProcessPaymentAsync(It.IsAny<ProcessPaymentRequest>()))
+            .Setup(client => client.ProcessPaymentAsync(
+                It.IsAny<ProcessPaymentRequest>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ProcessPaymentResponse(
                 Guid.NewGuid(),
                 _order.Id,
                 1500m,
                 "Failed",
-                "Card",
+                PaymentMethods.Card,
                 "0000",
                 DateTime.UtcNow));
 

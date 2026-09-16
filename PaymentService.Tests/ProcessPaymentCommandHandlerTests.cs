@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using NUnit.Framework;
 using PaymentService.DataAccess;
+using PaymentService.DataAccess.Constants;
 using PaymentService.DataAccess.Entities;
 using PaymentService.WebApi.DTOs;
 using PaymentService.WebApi.UseCases.Commands;
@@ -8,7 +9,7 @@ using PaymentService.WebApi.UseCases.Commands;
 namespace PaymentService.Tests;
 
 [TestFixture]
-public class ProcessPaymentCommandHandlerTests
+public sealed class ProcessPaymentCommandHandlerTests
 {
     private PaymentDbContext _dbContext = null!;
     private ProcessPaymentCommandHandler _handler = null!;
@@ -37,7 +38,11 @@ public class ProcessPaymentCommandHandlerTests
         var orderId = Guid.NewGuid();
 
         var result = await _handler.Handle(
-            new ProcessPaymentCommand(new ProcessPaymentDto(orderId, 120m, "Card", "4242")),
+            new ProcessPaymentCommand(new ProcessPaymentDto(
+                orderId,
+                120m,
+                PaymentMethods.Card,
+                "4242")),
             CancellationToken.None);
 
         Assert.That(result.Status, Is.EqualTo(PaymentStatus.Completed.ToString()));
@@ -47,10 +52,14 @@ public class ProcessPaymentCommandHandlerTests
     }
 
     [Test]
-    public async Task Handle_ShouldFailCardPayment_WhenDemoCardIs0000()
+    public async Task Handle_ShouldFailCardPayment_WhenDemoCardIsDeclined()
     {
         var result = await _handler.Handle(
-            new ProcessPaymentCommand(new ProcessPaymentDto(Guid.NewGuid(), 120m, "Card", "0000")),
+            new ProcessPaymentCommand(new ProcessPaymentDto(
+                Guid.NewGuid(),
+                120m,
+                PaymentMethods.Card,
+                DemoPaymentData.DeclinedCardLast4)),
             CancellationToken.None);
 
         Assert.That(result.Status, Is.EqualTo(PaymentStatus.Failed.ToString()));
@@ -61,13 +70,14 @@ public class ProcessPaymentCommandHandlerTests
     public async Task Handle_ShouldReturnExistingPayment_WhenRequestIsRepeated()
     {
         var orderId = Guid.NewGuid();
-        var first = await _handler.Handle(
-            new ProcessPaymentCommand(new ProcessPaymentDto(orderId, 120m, "Card", "4242")),
-            CancellationToken.None);
+        var request = new ProcessPaymentCommand(new ProcessPaymentDto(
+            orderId,
+            120m,
+            PaymentMethods.Card,
+            "4242"));
 
-        var second = await _handler.Handle(
-            new ProcessPaymentCommand(new ProcessPaymentDto(orderId, 120m, "Card", "4242")),
-            CancellationToken.None);
+        var first = await _handler.Handle(request, CancellationToken.None);
+        var second = await _handler.Handle(request, CancellationToken.None);
 
         Assert.That(second.Id, Is.EqualTo(first.Id));
         Assert.That(await _dbContext.Payments.CountAsync(), Is.EqualTo(1));
