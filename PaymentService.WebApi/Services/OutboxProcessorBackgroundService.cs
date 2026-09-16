@@ -1,12 +1,10 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 using PaymentService.DataAccess;
+using PaymentService.WebApi.Constants;
 
 namespace PaymentService.WebApi.Services;
 
-public class OutboxProcessorBackgroundService : BackgroundService
+public sealed class OutboxProcessorBackgroundService : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly IKafkaProducerService _kafkaProducer;
@@ -28,40 +26,52 @@ public class OutboxProcessorBackgroundService : BackgroundService
         {
             try
             {
-                using var scope = _serviceProvider.CreateScope();
-                var dbContext = scope.ServiceProvider.GetRequiredService<PaymentDbContext>();
-
-                var messages = await dbContext.OutboxMessages
-                    .Where(m => m.ProcessedAt == null)
-                    .OrderBy(m => m.CreatedAt)
-                    .Take(20)
-                    .ToListAsync(stoppingToken);
-
-                foreach (var message in messages)
-                {
-                    try
-                    {
-                        await _kafkaProducer.PublishRawMessageAsync(message.Type, message.Content);
-                        message.ProcessedAt = DateTime.UtcNow;
-                    }
-                    catch (Exception ex)
-                    {
-                        message.Error = ex.Message;
-                        _logger.LogError(ex, "Error processing outbox message {Id}", message.Id);
-                    }
-                }
-
-                if (messages.Count > 0)
-                {
-                    await dbContext.SaveChangesAsync(stoppingToken);
-                }
+                await ProcessPendingMessagesAsync(stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error executing outbox processor background job");
             }
 
-            await Task.Delay(2000, stoppingToken);
+            await Task.Delay(PaymentProcessingLimits.PollIntervalMilliseconds, stoppingToken);
         }
+    }
+
+    private async Task ProcessPendingMessagesAsync(CancellationToken cancellationToken)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<PaymentDbContext>();
+
+        var messages = await dbContext.OutboxMessages
+            .Where(message => message.ProcessedAt == null)
+            .OrderBy(message => message.CreatedAt)
+            .Take(PaymentProcessingLimits.OutboxBatchSize)
+            .ToListAsync(cancellationToken);
+
+        foreach (var message in messages)
+        {
+            try
+            {
+                await _kafkaProducer.PublishRawMessageAsync(
+                    message.Type,
+                    message.Content,
+                    cancellationToken);
+
+                message.ProcessedAt = DateTime.UtcNow;
+                message.Error = null;
+            }
+            catch (Exception ex)
+            {
+                message.Error = ex.Message;
+                _logger.LogError(ex, "Error processing outbox message {Id}", message.Id);
+            }
+        }
+
+        if (messages.Count > 0)
+            await dbContext.SaveChangesAsync(cancellationToken);
     }
 }

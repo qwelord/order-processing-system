@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 
 namespace PaymentService.WebApi.Filters;
 
-public class ValidationExceptionFilter : IExceptionFilter
+public sealed class ValidationExceptionFilter : IExceptionFilter
 {
     public void OnException(ExceptionContext context)
     {
@@ -12,8 +12,10 @@ public class ValidationExceptionFilter : IExceptionFilter
             return;
 
         var errors = validationException.Errors
-            .GroupBy(x => x.PropertyName)
-            .ToDictionary(x => x.Key, x => x.Select(y => y.ErrorMessage).ToArray());
+            .GroupBy(error => error.PropertyName)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(error => error.ErrorMessage).ToArray());
 
         context.Result = new BadRequestObjectResult(new ValidationProblemDetails(errors)
         {

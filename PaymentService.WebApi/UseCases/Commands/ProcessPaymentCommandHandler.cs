@@ -3,6 +3,7 @@ using FluentValidation.Results;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using PaymentService.DataAccess;
+using PaymentService.DataAccess.Constants;
 using PaymentService.DataAccess.Entities;
 using PaymentService.WebApi.DTOs;
 using PaymentService.WebApi.Services;
@@ -10,9 +11,9 @@ using System.Text.Json;
 
 namespace PaymentService.WebApi.UseCases.Commands;
 
-public record ProcessPaymentCommand(ProcessPaymentDto PaymentDto) : IRequest<PaymentResponseDto>;
+public sealed record ProcessPaymentCommand(ProcessPaymentDto PaymentDto) : IRequest<PaymentResponseDto>;
 
-public class ProcessPaymentCommandHandler : IRequestHandler<ProcessPaymentCommand, PaymentResponseDto>
+public sealed class ProcessPaymentCommandHandler : IRequestHandler<ProcessPaymentCommand, PaymentResponseDto>
 {
     private readonly PaymentDbContext _db;
 
@@ -21,58 +22,54 @@ public class ProcessPaymentCommandHandler : IRequestHandler<ProcessPaymentComman
         _db = db;
     }
 
-    public async Task<PaymentResponseDto> Handle(ProcessPaymentCommand request, CancellationToken cancellationToken)
+    public async Task<PaymentResponseDto> Handle(
+        ProcessPaymentCommand request,
+        CancellationToken cancellationToken)
     {
         var dto = request.PaymentDto;
-
-        if (dto.Amount <= 0)
-            throw new ValidationException(new[]
-            {
-                new ValidationFailure("Amount", "Payment amount must be positive.")
-            });
-
-        if (dto.PaymentMethod is not ("Card" or "CashOnDelivery"))
-            throw new ValidationException(new[]
-            {
-                new ValidationFailure("PaymentMethod", "Unsupported payment method.")
-            });
-
+        var paymentMethod = PaymentMethods.Parse(dto.PaymentMethod);
         var existingPayment = await _db.Payments
             .AsNoTracking()
             .SingleOrDefaultAsync(payment => payment.OrderId == dto.OrderId, cancellationToken);
 
         if (existingPayment is not null)
         {
-            if (existingPayment.Amount != dto.Amount || existingPayment.PaymentMethod != dto.PaymentMethod)
-            {
-                throw new ValidationException(new[]
-                {
-                    new ValidationFailure("OrderId", "A different payment already exists for this order.")
-                });
-            }
+            if (!existingPayment.Matches(dto.Amount, paymentMethod, dto.CardLast4))
+                throw new ValidationException([new ValidationFailure(nameof(ProcessPaymentCommand.PaymentDto), "A different payment already exists for this order.")]);
 
-            return ToResponse(existingPayment);
+            return PaymentResponseDto.FromEntity(existingPayment);
         }
 
-        var payment = new Payment
-        {
-            Id = Guid.NewGuid(),
-            OrderId = dto.OrderId,
-            Amount = dto.Amount,
-            PaymentMethod = dto.PaymentMethod,
-            CardLast4 = dto.PaymentMethod == "Card" ? dto.CardLast4 : null,
-            ProcessedAt = DateTime.UtcNow
-        };
-
-        payment.Status = dto.PaymentMethod == "Card"
-            ? dto.CardLast4 == "0000" ? PaymentStatus.Failed : PaymentStatus.Completed
-            : PaymentStatus.Pending;
+        var payment = Payment.Create(
+            dto.OrderId,
+            dto.Amount,
+            paymentMethod,
+            dto.CardLast4,
+            DateTime.UtcNow);
 
         _db.Payments.Add(payment);
         AddOutboxMessage(payment);
-        await _db.SaveChangesAsync(cancellationToken);
 
-        return ToResponse(payment);
+        try
+        {
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            var concurrentPayment = await _db.Payments
+                .AsNoTracking()
+                .SingleOrDefaultAsync(payment => payment.OrderId == dto.OrderId, cancellationToken);
+
+            if (concurrentPayment is null)
+                throw;
+
+            if (!concurrentPayment.Matches(dto.Amount, paymentMethod, dto.CardLast4))
+                throw new ValidationException([new ValidationFailure(nameof(ProcessPaymentCommand.PaymentDto), "A different payment already exists for this order.")]);
+
+            return PaymentResponseDto.FromEntity(concurrentPayment);
+        }
+
+        return PaymentResponseDto.FromEntity(payment);
     }
 
     private void AddOutboxMessage(Payment payment)
@@ -92,13 +89,4 @@ public class ProcessPaymentCommandHandler : IRequestHandler<ProcessPaymentComman
             CreatedAt = DateTime.UtcNow
         });
     }
-
-    private static PaymentResponseDto ToResponse(Payment payment) => new(
-        payment.Id,
-        payment.OrderId,
-        payment.Amount,
-        payment.Status.ToString(),
-        payment.PaymentMethod,
-        payment.CardLast4,
-        payment.ProcessedAt);
 }

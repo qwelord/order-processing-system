@@ -2,8 +2,9 @@ using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using PaymentService.DataAccess;
-using PaymentService.WebApi.Services;
 using PaymentService.WebApi.Filters;
+using PaymentService.WebApi.PipelineBehaviors;
+using PaymentService.WebApi.Services;
 using PaymentService.WebApi.Validators;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,13 +12,16 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers(options => options.Filters.Add<ValidationExceptionFilter>());
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
 builder.Services.AddDbContext<PaymentDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
-builder.Services.AddValidatorsFromAssemblyContaining<ProcessPaymentDtoValidator>();
-builder.Services.AddAutoMapper(typeof(Program).Assembly);
+builder.Services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
+    cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
+});
+
+builder.Services.AddValidatorsFromAssemblyContaining<ProcessPaymentCommandValidator>();
 builder.Services.AddSingleton<IKafkaProducerService, KafkaProducerService>();
 builder.Services.AddHostedService<OutboxProcessorBackgroundService>();
 
