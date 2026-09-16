@@ -1,309 +1,322 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#0b0f14" />
-  <title>OrderFlow</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@8.0.17/dist/browser/signalr.min.js"></script>
-  <link rel="stylesheet" href="/css/app.css" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b0f14" />
+    <title>OrderFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@8.0.17/dist/browser/signalr.min.js"></script>
+    <link rel="stylesheet" href="/css/app.css" />
+    <link rel="stylesheet" href="/pig-widget/pig-widget.css" />
 </head>
 <body>
-  <div class="ambient ambient-one"></div>
-  <div class="ambient ambient-two"></div>
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
 
-  <div class="app-shell">
-    <aside class="sidebar">
-      <div class="brand-lockup">
-        <div class="brand-mark">OF</div>
-        <div>
-          <div class="brand-name">OrderFlow</div>
-          <div class="brand-caption">Order operations</div>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="brand-lockup">
+                <div class="brand-mark">OF</div>
+                <div>
+                    <div class="brand-name">OrderFlow</div>
+                    <div class="brand-caption">Order operations</div>
+                </div>
+            </div>
+
+            <nav class="nav" aria-label="Primary navigation">
+                <button class="nav-button active" data-page="dashboard" type="button">
+                    <span class="nav-icon">⌂</span>
+                    <span>Overview</span>
+                </button>
+                <button class="nav-button" data-page="catalog" type="button">
+                    <span class="nav-icon">◫</span>
+                    <span>Catalog</span>
+                </button>
+                <button class="nav-button" data-page="orders" type="button">
+                    <span class="nav-icon">↳</span>
+                    <span>Orders</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="system-card">
+                    <div class="system-card-top">
+                        <span class="status-indicator" id="liveIndicator"></span>
+                        <span id="liveStatus">Realtime connected</span>
+                    </div>
+                    <div class="system-meta">Order Service · Payment Service · Kafka · Outbox · SignalR</div>
+                </div>
+                <div class="sidebar-note">Demo environment</div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <div>
+                    <div class="eyebrow">OPERATIONS CONSOLE</div>
+                    <h1 id="pageTitle">Overview</h1>
+                    <p id="pageSubtitle">A live view of your order processing flow.</p>
+                </div>
+                <div class="topbar-actions">
+                    <button class="button button-ghost" type="button" onclick="refreshAll()">Refresh</button>
+                    <button class="button button-primary" type="button" onclick="openOrderModal()">Create order</button>
+                </div>
+            </header>
+
+            <section id="page-dashboard" class="page">
+                <div class="hero-grid">
+                    <section class="hero-card">
+                        <div class="hero-badge">LIVE ORDER WORKFLOW</div>
+                        <h2>Catalog, checkout and payment in one clean flow.</h2>
+                        <p>Create an order, reserve inventory, complete the demo payment and watch the final state move through the system in real time.</p>
+                        <div class="hero-actions">
+                            <button class="button button-primary" type="button" onclick="showPage('catalog')">Open catalog</button>
+                            <button class="button button-soft" type="button" onclick="showPage('orders')">Inspect orders</button>
+                        </div>
+                        <div class="flow-strip" aria-label="System flow">
+                            <span>Catalog</span><i></i><span>Order</span><i></i><span>Payment</span><i></i><span>Outbox</span><i></i><span>Realtime</span>
+                        </div>
+                    </section>
+
+                    <section class="event-card">
+                        <div class="section-kicker">LATEST EVENT</div>
+                        <div class="event-value" id="lastEvent">Waiting for payment events…</div>
+                        <div class="event-meta" id="lastEventTime">No event received yet</div>
+                        <div class="event-line"></div>
+                        <div class="event-footer">
+                            <span>SignalR</span>
+                            <span class="event-live"><span class="mini-dot"></span>Live</span>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="stats-grid">
+                    <article class="stat-card">
+                        <div class="stat-label">Total orders</div>
+                        <div class="stat-value" id="statOrders">—</div>
+                        <div class="stat-foot">All visible orders</div>
+                    </article>
+                    <article class="stat-card">
+                        <div class="stat-label">Paid</div>
+                        <div class="stat-value" id="statPaid">—</div>
+                        <div class="stat-foot stat-good">Successful payments</div>
+                    </article>
+                    <article class="stat-card">
+                        <div class="stat-label">Pending</div>
+                        <div class="stat-value" id="statPending">—</div>
+                        <div class="stat-foot stat-warn">Waiting for payment</div>
+                    </article>
+                    <article class="stat-card stat-accent">
+                        <div class="stat-label">Revenue</div>
+                        <div class="stat-value" id="statRevenue">—</div>
+                        <div class="stat-foot">Paid orders only</div>
+                    </article>
+                </div>
+
+                <section class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <div class="section-kicker">RECENT ACTIVITY</div>
+                            <h2>Latest orders</h2>
+                        </div>
+                        <button class="button button-ghost" type="button" onclick="showPage('orders')">View all</button>
+                    </div>
+                    <div class="table-wrap" id="recentOrders"></div>
+                </section>
+            </section>
+
+            <section id="page-catalog" class="page hidden">
+                <section class="panel">
+                    <div class="panel-header panel-header-stacked-mobile">
+                        <div>
+                            <div class="section-kicker">INVENTORY</div>
+                            <h2>Product catalog</h2>
+                        </div>
+                        <div class="toolbar">
+                            <input id="productSearch" class="control" placeholder="Search products" autocomplete="off" oninput="renderProducts()" />
+                            <button class="button button-primary" type="button" onclick="openProductModal()">Add product</button>
+                        </div>
+                    </div>
+                    <div class="product-grid" id="productGrid"></div>
+                </section>
+            </section>
+
+            <section id="page-orders" class="page hidden">
+                <section class="panel">
+                    <div class="panel-header panel-header-stacked-mobile">
+                        <div>
+                            <div class="section-kicker">ORDER MANAGEMENT</div>
+                            <h2>Orders</h2>
+                        </div>
+                        <div class="toolbar">
+                            <input id="orderSearch" class="control" placeholder="Search customer or ID" autocomplete="off" oninput="loadOrders()" />
+                            <select id="orderStatus" class="control" onchange="loadOrders()">
+                                <option value="">All statuses</option>
+                                <option value="PendingPayment">Pending payment</option>
+                                <option value="Paid">Paid</option>
+                                <option value="Cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-wrap" id="ordersTable"></div>
+                </section>
+            </section>
+        </main>
+    </div>
+
+    <div id="productModal" class="modal" aria-hidden="true">
+        <div class="dialog">
+            <div class="dialog-header">
+                <div>
+                    <div class="section-kicker">CATALOG</div>
+                    <h3 id="productModalTitle">New product</h3>
+                </div>
+                <button class="icon-button" type="button" aria-label="Close" onclick="closeModal('productModal')">×</button>
+            </div>
+            <form class="form" onsubmit="saveProduct(event)">
+                <input type="hidden" id="productId" />
+                <label>Name<input id="productName" required maxlength="200" /></label>
+                <label>Description<textarea id="productDescription" maxlength="1000"></textarea></label>
+                <div class="form-grid">
+                    <label>Price<input id="productPrice" required type="number" min="0.01" step="0.01" /></label>
+                    <label>Stock<input id="productStock" required type="number" min="0" step="1" /></label>
+                </div>
+                <label class="checkbox-row"><input id="productActive" type="checkbox" checked /> Active</label>
+                <div class="dialog-actions">
+                    <button class="button button-ghost" type="button" onclick="closeModal('productModal')">Cancel</button>
+                    <button class="button button-primary" type="submit">Save product</button>
+                </div>
+            </form>
         </div>
-      </div>
+    </div>
 
-      <nav class="nav" aria-label="Primary navigation">
-        <button class="nav-button active" data-page="dashboard" type="button">
-          <span class="nav-icon">⌂</span>
-          <span>Overview</span>
+    <div id="orderModal" class="modal" aria-hidden="true">
+        <div class="dialog dialog-wide">
+            <div class="dialog-header">
+                <div>
+                    <div class="section-kicker">CHECKOUT</div>
+                    <h3>Create order</h3>
+                </div>
+                <button class="icon-button" type="button" aria-label="Close" onclick="closeModal('orderModal')">×</button>
+            </div>
+
+            <form class="form" onsubmit="createOrder(event)">
+                <div class="form-grid">
+                    <label>Customer name<input id="customerName" required maxlength="200" /></label>
+                    <label>Email<input id="customerEmail" required type="email" maxlength="320" /></label>
+                </div>
+
+                <div class="inner-panel">
+                    <div class="inner-panel-header">
+                        <div>
+                            <div class="section-kicker">CART</div>
+                            <h4>Selected items</h4>
+                        </div>
+                        <span id="cartTotal" class="price">€0.00</span>
+                    </div>
+                    <div id="cartItems" class="cart"></div>
+                </div>
+
+                <div class="inner-panel">
+                    <div class="inner-panel-header">
+                        <div>
+                            <div class="section-kicker">PAYMENT</div>
+                            <h4>Method</h4>
+                        </div>
+                        <span class="muted">Payment runs after order creation</span>
+                    </div>
+                    <select id="paymentMethod" class="control control-full">
+                        <option value="Card">Card</option>
+                        <option value="CashOnDelivery">Cash on delivery</option>
+                    </select>
+                </div>
+
+                <div class="dialog-footer-row">
+                    <span class="muted">Only the card's last four digits are sent to the payment service.</span>
+                    <button class="button button-primary" type="submit">Continue to payment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="paymentModal" class="modal" aria-hidden="true">
+        <div class="dialog">
+            <div class="dialog-header">
+                <div>
+                    <div class="section-kicker">DEMO GATEWAY</div>
+                    <h3>Pay order <span id="paymentOrderShort"></span></h3>
+                </div>
+                <button class="icon-button" type="button" aria-label="Close" onclick="closeModal('paymentModal')">×</button>
+            </div>
+
+            <div class="payment-summary">
+                <div>
+                    <span>Amount</span>
+                    <strong id="paymentAmount">€0.00</strong>
+                </div>
+                <div>
+                    <span>Order status</span>
+                    <span id="paymentOrderStatus" class="badge pending">Pending payment</span>
+                </div>
+            </div>
+
+            <form class="form" onsubmit="payOrder(event)">
+                <label>Card number<input id="paymentCardNumber" inputmode="numeric" autocomplete="cc-number" maxlength="19" placeholder="4242 4242 4242 4242" required /></label>
+                <div class="form-grid">
+                    <label>Expiry<input id="paymentExpiry" inputmode="numeric" maxlength="5" placeholder="12/30" required /></label>
+                    <label>CVV<input id="paymentCvv" inputmode="numeric" maxlength="4" placeholder="123" required /></label>
+                </div>
+                <div class="demo-note">
+                    <div class="demo-note-title">Demo payment</div>
+                    <div>Use any four-digit ending to approve the payment. Use 0000 to simulate a decline.</div>
+                </div>
+                <button id="payButton" class="button button-primary button-full" type="submit">Pay now</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="detailsModal" class="modal" aria-hidden="true">
+        <div class="dialog dialog-wide">
+            <div class="dialog-header">
+                <div>
+                    <div class="section-kicker">ORDER</div>
+                    <h3>Order details</h3>
+                </div>
+                <button class="icon-button" type="button" aria-label="Close" onclick="closeModal('detailsModal')">×</button>
+            </div>
+            <div id="orderDetails"></div>
+        </div>
+    </div>
+
+    <div id="toasts" class="toast-wrap" aria-live="polite" aria-atomic="true"></div>
+
+    <div class="pig-widget" id="pigWidget" aria-label="Interactive pig">
+        <button class="pig-button"
+                id="pigButton"
+                type="button"
+                aria-label="Click the pig to hear an oink"
+                aria-describedby="pigCounter">
+            <span class="pig-glow" aria-hidden="true"></span>
+
+            <img class="pig-image"
+                 src="/pig-widget/pig.svg"
+                 alt="Свинья"
+                 draggable="false" />
+
+            <span class="pig-counter"
+                  id="pigCounter"
+                  aria-live="polite">&#1061;&#1088;&#1102;: 0</span>
         </button>
-        <button class="nav-button" data-page="catalog" type="button">
-          <span class="nav-icon">◫</span>
-          <span>Catalog</span>
-        </button>
-        <button class="nav-button" data-page="orders" type="button">
-          <span class="nav-icon">↳</span>
-          <span>Orders</span>
-        </button>
-      </nav>
 
-      <div class="sidebar-footer">
-        <div class="system-card">
-          <div class="system-card-top">
-            <span class="status-indicator" id="liveIndicator"></span>
-            <span id="liveStatus">Realtime connected</span>
-          </div>
-          <div class="system-meta">Order Service · Payment Service · Kafka · Outbox · SignalR</div>
-        </div>
-        <div class="sidebar-note">Demo environment</div>
-      </div>
-    </aside>
-
-    <main class="main-content">
-      <header class="topbar">
-        <div>
-          <div class="eyebrow">OPERATIONS CONSOLE</div>
-          <h1 id="pageTitle">Overview</h1>
-          <p id="pageSubtitle">A live view of your order processing flow.</p>
-        </div>
-        <div class="topbar-actions">
-          <button class="button button-ghost" type="button" onclick="refreshAll()">Refresh</button>
-          <button class="button button-primary" type="button" onclick="openOrderModal()">Create order</button>
-        </div>
-      </header>
-
-      <section id="page-dashboard" class="page">
-        <div class="hero-grid">
-          <section class="hero-card">
-            <div class="hero-badge">LIVE ORDER WORKFLOW</div>
-            <h2>Catalog, checkout and payment in one clean flow.</h2>
-            <p>Create an order, reserve inventory, complete the demo payment and watch the final state move through the system in real time.</p>
-            <div class="hero-actions">
-              <button class="button button-primary" type="button" onclick="showPage('catalog')">Open catalog</button>
-              <button class="button button-soft" type="button" onclick="showPage('orders')">Inspect orders</button>
-            </div>
-            <div class="flow-strip" aria-label="System flow">
-              <span>Catalog</span><i></i><span>Order</span><i></i><span>Payment</span><i></i><span>Outbox</span><i></i><span>Realtime</span>
-            </div>
-          </section>
-
-          <section class="event-card">
-            <div class="section-kicker">LATEST EVENT</div>
-            <div class="event-value" id="lastEvent">Waiting for payment events…</div>
-            <div class="event-meta" id="lastEventTime">No event received yet</div>
-            <div class="event-line"></div>
-            <div class="event-footer">
-              <span>SignalR</span>
-              <span class="event-live"><span class="mini-dot"></span>Live</span>
-            </div>
-          </section>
-        </div>
-
-        <div class="stats-grid">
-          <article class="stat-card">
-            <div class="stat-label">Total orders</div>
-            <div class="stat-value" id="statOrders">—</div>
-            <div class="stat-foot">All visible orders</div>
-          </article>
-          <article class="stat-card">
-            <div class="stat-label">Paid</div>
-            <div class="stat-value" id="statPaid">—</div>
-            <div class="stat-foot stat-good">Successful payments</div>
-          </article>
-          <article class="stat-card">
-            <div class="stat-label">Pending</div>
-            <div class="stat-value" id="statPending">—</div>
-            <div class="stat-foot stat-warn">Waiting for payment</div>
-          </article>
-          <article class="stat-card stat-accent">
-            <div class="stat-label">Revenue</div>
-            <div class="stat-value" id="statRevenue">—</div>
-            <div class="stat-foot">Paid orders only</div>
-          </article>
-        </div>
-
-        <section class="panel">
-          <div class="panel-header">
-            <div>
-              <div class="section-kicker">RECENT ACTIVITY</div>
-              <h2>Latest orders</h2>
-            </div>
-            <button class="button button-ghost" type="button" onclick="showPage('orders')">View all</button>
-          </div>
-          <div class="table-wrap" id="recentOrders"></div>
-        </section>
-      </section>
-
-      <section id="page-catalog" class="page hidden">
-        <section class="panel">
-          <div class="panel-header panel-header-stacked-mobile">
-            <div>
-              <div class="section-kicker">INVENTORY</div>
-              <h2>Product catalog</h2>
-            </div>
-            <div class="toolbar">
-              <input id="productSearch" class="control" placeholder="Search products" autocomplete="off" oninput="renderProducts()" />
-              <button class="button button-primary" type="button" onclick="openProductModal()">Add product</button>
-            </div>
-          </div>
-          <div class="product-grid" id="productGrid"></div>
-        </section>
-      </section>
-
-      <section id="page-orders" class="page hidden">
-        <section class="panel">
-          <div class="panel-header panel-header-stacked-mobile">
-            <div>
-              <div class="section-kicker">ORDER MANAGEMENT</div>
-              <h2>Orders</h2>
-            </div>
-            <div class="toolbar">
-              <input id="orderSearch" class="control" placeholder="Search customer or ID" autocomplete="off" oninput="loadOrders()" />
-              <select id="orderStatus" class="control" onchange="loadOrders()">
-                <option value="">All statuses</option>
-                <option value="PendingPayment">Pending payment</option>
-                <option value="Paid">Paid</option>
-                <option value="Cancelled">Cancelled</option>
-              </select>
-            </div>
-          </div>
-          <div class="table-wrap" id="ordersTable"></div>
-        </section>
-      </section>
-    </main>
-  </div>
-
-  <div id="productModal" class="modal" aria-hidden="true">
-    <div class="dialog">
-      <div class="dialog-header">
-        <div>
-          <div class="section-kicker">CATALOG</div>
-          <h3 id="productModalTitle">New product</h3>
-        </div>
-        <button class="icon-button" type="button" aria-label="Close" onclick="closeModal('productModal')">×</button>
-      </div>
-      <form class="form" onsubmit="saveProduct(event)">
-        <input type="hidden" id="productId" />
-        <label>Name<input id="productName" required maxlength="200" /></label>
-        <label>Description<textarea id="productDescription" maxlength="1000"></textarea></label>
-        <div class="form-grid">
-          <label>Price<input id="productPrice" required type="number" min="0.01" step="0.01" /></label>
-          <label>Stock<input id="productStock" required type="number" min="0" step="1" /></label>
-        </div>
-        <label class="checkbox-row"><input id="productActive" type="checkbox" checked /> Active</label>
-        <div class="dialog-actions">
-          <button class="button button-ghost" type="button" onclick="closeModal('productModal')">Cancel</button>
-          <button class="button button-primary" type="submit">Save product</button>
-        </div>
-      </form>
+        <audio id="pigSound" preload="auto">
+            <source src="/pig-widget/pig-oink.mp3" type="audio/mpeg" />
+        </audio>
     </div>
-  </div>
 
-  <div id="orderModal" class="modal" aria-hidden="true">
-    <div class="dialog dialog-wide">
-      <div class="dialog-header">
-        <div>
-          <div class="section-kicker">CHECKOUT</div>
-          <h3>Create order</h3>
-        </div>
-        <button class="icon-button" type="button" aria-label="Close" onclick="closeModal('orderModal')">×</button>
-      </div>
-
-      <form class="form" onsubmit="createOrder(event)">
-        <div class="form-grid">
-          <label>Customer name<input id="customerName" required maxlength="200" /></label>
-          <label>Email<input id="customerEmail" required type="email" maxlength="320" /></label>
-        </div>
-
-        <div class="inner-panel">
-          <div class="inner-panel-header">
-            <div>
-              <div class="section-kicker">CART</div>
-              <h4>Selected items</h4>
-            </div>
-            <span id="cartTotal" class="price">€0.00</span>
-          </div>
-          <div id="cartItems" class="cart"></div>
-        </div>
-
-        <div class="inner-panel">
-          <div class="inner-panel-header">
-            <div>
-              <div class="section-kicker">PAYMENT</div>
-              <h4>Method</h4>
-            </div>
-            <span class="muted">Payment runs after order creation</span>
-          </div>
-          <select id="paymentMethod" class="control control-full">
-            <option value="Card">Card</option>
-            <option value="CashOnDelivery">Cash on delivery</option>
-          </select>
-        </div>
-
-        <div class="dialog-footer-row">
-          <span class="muted">Only the card's last four digits are sent to the payment service.</span>
-          <button class="button button-primary" type="submit">Continue to payment</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <div id="paymentModal" class="modal" aria-hidden="true">
-    <div class="dialog">
-      <div class="dialog-header">
-        <div>
-          <div class="section-kicker">DEMO GATEWAY</div>
-          <h3>Pay order <span id="paymentOrderShort"></span></h3>
-        </div>
-        <button class="icon-button" type="button" aria-label="Close" onclick="closeModal('paymentModal')">×</button>
-      </div>
-
-      <div class="payment-summary">
-        <div>
-          <span>Amount</span>
-          <strong id="paymentAmount">€0.00</strong>
-        </div>
-        <div>
-          <span>Order status</span>
-          <span id="paymentOrderStatus" class="badge pending">Pending payment</span>
-        </div>
-      </div>
-
-      <form class="form" onsubmit="payOrder(event)">
-        <label>Card number<input id="paymentCardNumber" inputmode="numeric" autocomplete="cc-number" maxlength="19" placeholder="4242 4242 4242 4242" required /></label>
-        <div class="form-grid">
-          <label>Expiry<input id="paymentExpiry" inputmode="numeric" maxlength="5" placeholder="12/30" required /></label>
-          <label>CVV<input id="paymentCvv" inputmode="numeric" maxlength="4" placeholder="123" required /></label>
-        </div>
-        <div class="demo-note">
-          <div class="demo-note-title">Demo payment</div>
-          <div>Use any four-digit ending to approve the payment. Use 0000 to simulate a decline.</div>
-        </div>
-        <button id="payButton" class="button button-primary button-full" type="submit">Pay now</button>
-      </form>
-    </div>
-  </div>
-
-  <div id="detailsModal" class="modal" aria-hidden="true">
-    <div class="dialog dialog-wide">
-      <div class="dialog-header">
-        <div>
-          <div class="section-kicker">ORDER</div>
-          <h3>Order details</h3>
-        </div>
-        <button class="icon-button" type="button" aria-label="Close" onclick="closeModal('detailsModal')">×</button>
-      </div>
-      <div id="orderDetails"></div>
-    </div>
-  </div>
-
-  <div id="toasts" class="toast-wrap" aria-live="polite" aria-atomic="true"></div>
-
-  <div class="pig-widget" id="pigWidget">
-    <button class="pig-button" id="pigButton" type="button" aria-label="Click the pig to hear an oink" aria-describedby="pigCounter">
-      <span class="pig-glow" aria-hidden="true"></span>
-      <img src="/pig-widget/pig.svg" alt="Pig" class="pig-image" draggable="false" />
-      <span class="pig-counter" id="pigCounter" aria-live="polite">Oinks: 0</span>
-    </button>
-    <audio id="pigSound" preload="auto">
-      <source src="/pig-widget/pig-oink.mp3" type="audio/mpeg" />
-    </audio>
-  </div>
-
-  <script src="/pig-widget/pig-widget.js"></script>
-  <script src="/js/app.js"></script>
+    <script src="/pig-widget/pig-widget.js"></script>
+    <script src="/js/app.js"></script>
 </body>
 </html>
