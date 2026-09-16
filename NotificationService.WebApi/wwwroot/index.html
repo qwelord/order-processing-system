@@ -1,663 +1,309 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <link rel="stylesheet" href="/pig-widget/pig-widget.css">
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b0f14" />
   <title>OrderFlow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@8.0.17/dist/browser/signalr.min.js"></script>
-  <style>
-    :root{--bg:#0b1020;--panel:#11182b;--panel2:#17213a;--text:#f7f8fb;--muted:#8f9bb4;--line:#25304a;--accent:#7c5cff;--accent2:#4dd4ff;--good:#28c76f;--warn:#ffb020;--bad:#ff5d6c;--shadow:0 18px 45px rgba(0,0,0,.28);--radius:18px}
-    *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top right,#1b2450 0,#0b1020 42%),var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-    button,input,select,textarea{font:inherit}button{cursor:pointer;border:0}.app{display:flex;min-height:100vh}.sidebar{width:250px;padding:26px 18px;border-right:1px solid rgba(255,255,255,.06);background:rgba(10,15,30,.78);backdrop-filter:blur(18px);position:sticky;top:0;height:100vh}.brand{font-size:22px;font-weight:800;letter-spacing:-.04em;margin-bottom:26px}.brand span{color:var(--accent2)}.nav{display:grid;gap:8px}.nav button{background:transparent;color:var(--muted);padding:12px 14px;border-radius:12px;text-align:left}.nav button.active,.nav button:hover{background:var(--panel2);color:var(--text)}.status-pill{margin-top:30px;padding:13px;background:rgba(40,199,111,.08);border:1px solid rgba(40,199,111,.18);border-radius:14px;color:#bdf5d3;font-size:13px}.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--good);margin-right:8px}.main{flex:1;padding:28px 34px;max-width:1500px}.topbar{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:28px}.topbar h1{margin:0;font-size:30px;letter-spacing:-.04em}.topbar p{margin:5px 0 0;color:var(--muted)}.primary{background:linear-gradient(135deg,var(--accent),#9b72ff);color:white;padding:12px 16px;border-radius:12px;box-shadow:0 10px 28px rgba(124,92,255,.3);font-weight:700}.secondary{background:var(--panel2);color:var(--text);padding:11px 14px;border-radius:12px;border:1px solid var(--line)}.danger{background:rgba(255,93,108,.12);color:#ff9aa4;padding:10px 12px;border-radius:10px}.grid{display:grid;gap:16px}.stats{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:20px}.stat{background:linear-gradient(180deg,rgba(24,33,58,.96),rgba(15,22,40,.96));border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}.stat .label{color:var(--muted);font-size:13px}.stat .value{font-size:30px;font-weight:800;margin-top:8px}.section{background:rgba(15,22,40,.82);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}.section-head{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:15px}.section h2{margin:0;font-size:18px}.table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse}.table th,.table td{padding:13px 10px;text-align:left;border-bottom:1px solid rgba(255,255,255,.06);white-space:nowrap}.table th{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}.table td{font-size:14px}.badge{display:inline-flex;align-items:center;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:700}.badge.paid{background:rgba(40,199,111,.12);color:#87e7aa}.badge.pending{background:rgba(255,176,32,.12);color:#ffd27a}.badge.cancelled,.badge.failed{background:rgba(255,93,108,.12);color:#ff9da7}.badge.info{background:rgba(77,212,255,.12);color:#8fe8ff}.toolbar{display:flex;gap:10px;flex-wrap:wrap}.control{background:#0f1628;color:var(--text);border:1px solid var(--line);padding:11px 12px;border-radius:12px;outline:none}.control:focus{border-color:var(--accent)}.products{grid-template-columns:repeat(3,minmax(0,1fr))}.product{background:linear-gradient(180deg,#141d33,#0f1627);border:1px solid var(--line);border-radius:18px;padding:18px;display:flex;flex-direction:column;min-height:215px}.product-title{font-weight:750;font-size:17px}.product-desc{color:var(--muted);font-size:13px;line-height:1.5;margin:8px 0 15px;flex:1}.product-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.price{font-size:21px;font-weight:800}.stock{font-size:12px;color:var(--muted)}.row{display:flex;gap:10px;align-items:center}.row-between{display:flex;justify-content:space-between;align-items:center;gap:10px}.modal{position:fixed;inset:0;background:rgba(5,8,18,.7);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:20px;z-index:20}.modal.open{display:flex}.dialog{width:min(700px,100%);max-height:90vh;overflow:auto;background:#10182b;border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 28px 80px rgba(0,0,0,.45)}.dialog h3{margin-top:0}.form{display:grid;gap:13px}.form label{display:grid;gap:7px;color:var(--muted);font-size:13px}.form input,.form select,.form textarea{width:100%;background:#0b1222;color:var(--text);border:1px solid var(--line);border-radius:12px;padding:11px 12px}.form textarea{min-height:90px;resize:vertical}.cart{display:grid;gap:10px}.cart-item{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.06)}.qty{display:flex;align-items:center;gap:8px}.qty button{width:30px;height:30px;border-radius:9px;background:var(--panel2);color:white}.timeline{display:grid;gap:0}.step{display:grid;grid-template-columns:28px 1fr;gap:12px;min-height:64px}.step-marker{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#242e48;color:#8f9bb4;font-size:12px;font-weight:800;position:relative}.step:not(:last-child) .step-marker:after{content:"";position:absolute;top:28px;width:2px;height:36px;background:#242e48}.step.done .step-marker{background:var(--good);color:#06200f}.step.done .title{color:#baf2cf}.step .title{font-weight:700}.step .desc{font-size:12px;color:var(--muted);margin-top:4px}.toast-wrap{position:fixed;right:22px;bottom:22px;display:grid;gap:10px;z-index:30}.toast{padding:13px 15px;background:#141d33;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);min-width:280px}.toast.success{border-color:rgba(40,199,111,.35)}.toast.error{border-color:rgba(255,93,108,.35)}.empty{padding:34px;text-align:center;color:var(--muted)}.hidden{display:none!important}.subtle{color:var(--muted)}.hero{display:grid;grid-template-columns:1.4fr .8fr;gap:16px;margin-bottom:20px}.hero-card{padding:24px;border-radius:22px;border:1px solid var(--line);background:linear-gradient(135deg,rgba(124,92,255,.2),rgba(77,212,255,.08) 60%,rgba(17,24,43,.95));min-height:180px}.hero-card h2{font-size:28px;max-width:620px;letter-spacing:-.04em;margin:0 0 12px}.hero-card p{color:#b7c1d5;max-width:650px;line-height:1.6}.mini-panel{padding:20px;background:rgba(15,22,40,.82);border:1px solid var(--line);border-radius:22px}.mini-panel strong{display:block;font-size:22px;margin-top:10px}.loading{color:var(--muted);padding:20px;text-align:center}.two{grid-template-columns:1fr 1fr}.detail-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:16px}.item-line{display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.06)}.footer-note{font-size:12px;color:var(--muted);margin-top:18px}
-    @media(max-width:1100px){.stats{grid-template-columns:repeat(2,1fr)}.products{grid-template-columns:repeat(2,1fr)}.hero,.detail-grid{grid-template-columns:1fr}.sidebar{width:210px}}
-    @media(max-width:760px){.app{display:block}.sidebar{position:static;width:auto;height:auto;border-right:0;border-bottom:1px solid rgba(255,255,255,.06)}.nav{grid-template-columns:repeat(3,1fr)}.main{padding:20px}.stats,.products{grid-template-columns:1fr}.topbar{align-items:flex-start;flex-direction:column}}
-  </style>
+  <link rel="stylesheet" href="/css/app.css" />
 </head>
 <body>
-    <div class="app">
-        <aside class="sidebar">
-            <div class="brand">Order<span>Flow</span></div>
-            <div class="nav">
-                <button data-page="dashboard" class="active">Dashboard</button>
-                <button data-page="catalog">Catalog</button>
-                <button data-page="orders">Orders</button>
-            </div>
-            <div class="status-pill"><span class="status-dot"></span><span id="liveStatus">Realtime connected</span></div>
-            <div class="footer-note">Order Service · Payment Service · Kafka · Outbox · SignalR</div>
-        </aside>
-        <main class="main">
-            <div class="topbar">
-                <div><h1 id="pageTitle">Operations dashboard</h1><p id="pageSubtitle">A live view of your order processing flow.</p></div>
-                <div class="row"><button class="secondary" onclick="refreshAll()">Refresh</button><button class="primary" onclick="openOrderModal()">Create order</button></div>
-            </div>
-
-            <section id="page-dashboard" class="page">
-                <div class="hero">
-                    <div class="hero-card"><h2>From product catalog to paid order in one clean flow.</h2><p>Create products, build an order, choose a payment method and watch the state move through the distributed workflow in real time.</p><button class="primary" onclick="showPage('catalog')">Open catalog</button></div>
-                    <div class="mini-panel"><div class="subtle">Realtime event</div><strong id="lastEvent">Waiting for payment events…</strong><div class="subtle" id="lastEventTime"></div></div>
-                </div>
-                <div class="grid stats">
-                    <div class="stat"><div class="label">Total orders</div><div class="value" id="statOrders">—</div></div>
-                    <div class="stat"><div class="label">Paid</div><div class="value" id="statPaid">—</div></div>
-                    <div class="stat"><div class="label">Pending</div><div class="value" id="statPending">—</div></div>
-                    <div class="stat"><div class="label">Revenue</div><div class="value" id="statRevenue">—</div></div>
-                </div>
-                <div class="section"><div class="section-head"><h2>Recent orders</h2><button class="secondary" onclick="showPage('orders')">View all</button></div><div class="table-wrap" id="recentOrders"></div></div>
-            </section>
-
-            <section id="page-catalog" class="page hidden">
-                <div class="section">
-                    <div class="section-head"><h2>Product catalog</h2><div class="toolbar"><input id="productSearch" class="control" placeholder="Search products" oninput="renderProducts()"><button class="primary" onclick="openProductModal()">Add product</button></div></div>
-                    <div class="grid products" id="productGrid"></div>
-                </div>
-            </section>
-
-            <section id="page-orders" class="page hidden">
-                <div class="section">
-                    <div class="section-head"><h2>Orders</h2><div class="toolbar"><input id="orderSearch" class="control" placeholder="Search customer or ID" oninput="loadOrders()"><select id="orderStatus" class="control" onchange="loadOrders()"><option value="">All statuses</option><option>PendingPayment</option><option>Paid</option><option>Cancelled</option></select></div></div>
-                    <div class="table-wrap" id="ordersTable"></div>
-                </div>
-            </section>
-        </main>
-    </div>
-
-    <div id="productModal" class="modal"><div class="dialog"><div class="section-head"><h3 id="productModalTitle">New product</h3><button class="secondary" onclick="closeModal('productModal')">Close</button></div><form class="form" onsubmit="saveProduct(event)"><input type="hidden" id="productId"><label>Name<input id="productName" required maxlength="200"></label><label>Description<textarea id="productDescription" maxlength="1000"></textarea></label><div class="grid two"><label>Price<input id="productPrice" required type="number" min="0.01" step="0.01"></label><label>Stock<input id="productStock" required type="number" min="0" step="1"></label></div><label class="row"><input id="productActive" type="checkbox" checked> Active</label><button class="primary" type="submit">Save product</button></form></div></div>
-
-    <div id="orderModal" class="modal"><div class="dialog"><div class="section-head"><div><div class="subtle">Checkout</div><h3 style="margin:4px 0 0">Create order</h3></div><button class="secondary" type="button" onclick="closeModal('orderModal')">Close</button></div><div class="section"><div class="row-between"><span class="badge info">1</span><strong>Order details</strong><span class="subtle">Cart is validated again by the API</span></div></div><form class="form" onsubmit="createOrder(event)"><div class="grid two"><label>Customer name<input id="customerName" required maxlength="200"></label><label>Email<input id="customerEmail" required type="email"></label></div><div class="section"><div class="section-head"><h3>Cart</h3><span id="cartTotal" class="price">€0.00</span></div><div id="cartItems" class="cart"></div></div><div class="section"><div class="row-between"><strong>2. Payment method</strong><span class="subtle">You pay only after the order is created</span></div><label style="margin-top:12px">Method<select id="paymentMethod"><option value="Card">Card</option><option value="CashOnDelivery">Cash on delivery</option></select></label></div><div class="row-between"><span class="subtle">No card number or CVV is stored. The payment service receives only the last four digits.</span><button class="primary" type="submit">Continue to payment</button></div></form></div></div>
-
-    <div id="paymentModal" class="modal"><div class="dialog"><div class="section-head"><div><div class="subtle">Secure checkout demo</div><h3 style="margin:4px 0 0">Pay for order <span id="paymentOrderShort"></span></h3></div><button class="secondary" type="button" onclick="closeModal('paymentModal')">Close</button></div><div class="section"><div class="row-between"><span>Amount</span><strong id="paymentAmount" class="price">€0.00</strong></div><div class="row-between" style="margin-top:10px"><span>Order status</span><span id="paymentOrderStatus" class="badge pending">PendingPayment</span></div></div><form class="form" onsubmit="payOrder(event)"><label>Card number<input id="paymentCardNumber" inputmode="numeric" autocomplete="cc-number" maxlength="19" placeholder="4242 4242 4242 4242" required></label><div class="grid two"><label>Expiry<input id="paymentExpiry" inputmode="numeric" maxlength="5" placeholder="12/30" required></label><label>CVV<input id="paymentCvv" inputmode="numeric" maxlength="4" placeholder="123" required></label></div><div class="section"><div class="row-between"><strong>Demo gateway</strong><span class="badge info">No real charge</span></div><div class="subtle" style="margin-top:8px">Use any four-digit ending to approve the payment. Use 0000 to simulate a declined card.</div></div><button id="payButton" class="primary" type="submit">Pay now</button></form></div></div>
-
-    <div id="detailsModal" class="modal"><div class="dialog"><div class="section-head"><h3>Order details</h3><button class="secondary" onclick="closeModal('detailsModal')">Close</button></div><div id="orderDetails"></div></div></div>
-    <div class="toast-wrap" id="toasts"></div>
-
-    <script>
-        const API = 'http://localhost:5001';
-        const NOTIFY = 'http://localhost:5003';
-
-        const state = {
-            products: [],
-            orders: [],
-            cart: [],
-            paymentOrderId: null,
-            paymentOrder: null,
-            orderPoll: null
-        };
-
-        const money = value => new Intl.NumberFormat('en-DE', {
-            style: 'currency',
-            currency: 'EUR'
-        }).format(value || 0);
-
-        const escapeHtml = value => String(value ?? '').replace(/[&<>\"']/g, character => ({
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#39;'
-        }[character]));
-
-        const statusClass = status => String(status || '').toLowerCase().replace('pendingpayment', 'pending');
-        const formatDate = value => new Date(value).toLocaleString();
-
-        function toast(message, type = 'success') {
-            const element = document.createElement('div');
-            element.className = `toast ${type}`;
-            element.textContent = message;
-            document.getElementById('toasts').appendChild(element);
-            setTimeout(() => element.remove(), 4200);
-        }
-
-        function openModal(id) {
-            document.getElementById(id).classList.add('open');
-        }
-
-        function closeModal(id) {
-            document.getElementById(id).classList.remove('open');
-        }
-
-        function showPage(page) {
-            document.querySelectorAll('.page').forEach(element => element.classList.add('hidden'));
-            document.getElementById(`page-${page}`).classList.remove('hidden');
-            document.querySelectorAll('.nav button').forEach(button => {
-                button.classList.toggle('active', button.dataset.page === page);
-            });
-
-            const titles = {
-                dashboard: ['Operations dashboard', 'A live view of your order processing flow.'],
-                catalog: ['Product catalog', 'Manage products and inventory.'],
-                orders: ['Orders', 'Search, inspect, pay and cancel pending orders.']
-            };
-
-            document.getElementById('pageTitle').textContent = titles[page][0];
-            document.getElementById('pageSubtitle').textContent = titles[page][1];
-
-            if (page === 'catalog') loadProducts();
-            if (page === 'orders') loadOrders();
-        }
-
-        document.querySelectorAll('.nav button').forEach(button => {
-            button.addEventListener('click', () => showPage(button.dataset.page));
-        });
-
-        async function api(path, options = {}) {
-            const response = await fetch(`${API}${path}`, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(options.headers || {})
-                },
-                ...options
-            });
-
-            if (response.ok) {
-                return response.status === 204 ? null : response.json();
-            }
-
-            let message = 'Request failed';
-            try {
-                const payload = await response.json();
-                message = payload.detail || payload.message || payload.title || message;
-            } catch {
-                message = response.statusText || message;
-            }
-
-            throw new Error(message);
-        }
-
-        async function refreshAll() {
-            await Promise.all([loadProducts(), loadOrders(), loadDashboard()]);
-        }
-
-        async function loadProducts() {
-            try {
-                state.products = await api('/api/products');
-                renderProducts();
-            } catch (error) {
-                toast(error.message, 'error');
-            }
-        }
-
-        function renderProducts() {
-            const query = (document.getElementById('productSearch')?.value || '').toLowerCase();
-            const products = state.products.filter(product =>
-                `${product.name} ${product.description}`.toLowerCase().includes(query));
-            const root = document.getElementById('productGrid');
-
-            if (!products.length) {
-                root.innerHTML = '<div class="empty">No products match your search.</div>';
-                return;
-            }
-
-            root.innerHTML = products.map(product => `
-            <article class="product">
-                <div class="row-between">
-                    <div class="product-title">${escapeHtml(product.name)}</div>
-                    <span class="badge ${product.stockQuantity > 0 ? 'info' : 'cancelled'}">${product.stockQuantity} in stock</span>
-                </div>
-                <div class="product-desc">${escapeHtml(product.description || 'No description')}</div>
-                <div class="product-meta">
-                    <div class="price">${money(product.price)}</div>
-                    <div class="stock">${product.isActive ? 'Active' : 'Hidden'}</div>
-                </div>
-                <div class="row">
-                    <button class="primary" style="flex:1" ${!product.isActive || product.stockQuantity < 1 ? 'disabled' : ''} onclick="addToCart('${product.id}')">Add to cart</button>
-                    <button class="secondary" onclick="openProductModal('${product.id}')">Edit</button>
-                    <button class="danger" onclick="archiveProduct('${product.id}')">×</button>
-                </div>
-            </article>
-        `).join('');
-        }
-
-        function openProductModal(id) {
-            const product = state.products.find(item => item.id === id);
-            document.getElementById('productModalTitle').textContent = product ? 'Edit product' : 'New product';
-            document.getElementById('productId').value = product?.id || '';
-            document.getElementById('productName').value = product?.name || '';
-            document.getElementById('productDescription').value = product?.description || '';
-            document.getElementById('productPrice').value = product?.price || '';
-            document.getElementById('productStock').value = product?.stockQuantity ?? 0;
-            document.getElementById('productActive').checked = product?.isActive ?? true;
-            openModal('productModal');
-        }
-
-        async function saveProduct(event) {
-            event.preventDefault();
-
-            const id = document.getElementById('productId').value;
-            const body = {
-                name: document.getElementById('productName').value,
-                description: document.getElementById('productDescription').value,
-                price: Number(document.getElementById('productPrice').value),
-                stockQuantity: Number(document.getElementById('productStock').value),
-                isActive: document.getElementById('productActive').checked
-            };
-
-            try {
-                if (id) {
-                    await api(`/api/products/${id}`, { method: 'PUT', body: JSON.stringify(body) });
-                } else {
-                    await api('/api/products', { method: 'POST', body: JSON.stringify(body) });
-                }
-
-                closeModal('productModal');
-                await loadProducts();
-                toast(id ? 'Product updated' : 'Product created');
-            } catch (error) {
-                toast(error.message, 'error');
-            }
-        }
-
-        async function archiveProduct(id) {
-            if (!confirm('Archive this product?')) return;
-
-            try {
-                await api(`/api/products/${id}`, { method: 'DELETE' });
-                await loadProducts();
-                toast('Product archived');
-            } catch (error) {
-                toast(error.message, 'error');
-            }
-        }
-
-        function addToCart(productId) {
-            const product = state.products.find(item => item.id === productId);
-            if (!product) return;
-
-            const item = state.cart.find(entry => entry.productId === productId);
-            if (item) {
-                if (item.quantity >= product.stockQuantity) {
-                    toast('Not enough stock', 'error');
-                    return;
-                }
-                item.quantity += 1;
-            } else {
-                state.cart.push({ productId, quantity: 1 });
-            }
-
-            renderCart();
-            openModal('orderModal');
-        }
-
-        function changeQuantity(productId, delta) {
-            const item = state.cart.find(entry => entry.productId === productId);
-            if (!item) return;
-
-            const product = state.products.find(entry => entry.id === productId);
-            item.quantity += delta;
-
-            if (item.quantity <= 0) {
-                state.cart = state.cart.filter(entry => entry !== item);
-            }
-
-            if (item.quantity > (product?.stockQuantity || 0)) {
-                item.quantity = product.stockQuantity;
-            }
-
-            renderCart();
-        }
-
-        function renderCart() {
-            const root = document.getElementById('cartItems');
-
-            if (!state.cart.length) {
-                root.innerHTML = '<div class="empty">Your cart is empty. Add products from the catalog.</div>';
-                document.getElementById('cartTotal').textContent = '€0.00';
-                return;
-            }
-
-            let total = 0;
-            root.innerHTML = state.cart.map(item => {
-                const product = state.products.find(entry => entry.id === item.productId);
-                const lineTotal = product.price * item.quantity;
-                total += lineTotal;
-
-                return `
-                <div class="cart-item">
-                    <div>
-                        <strong>${escapeHtml(product.name)}</strong>
-                        <div class="subtle">${money(product.price)} each</div>
-                    </div>
-                    <div class="qty">
-                        <button type="button" onclick="changeQuantity('${product.id}', -1)">−</button>
-                        <strong>${item.quantity}</strong>
-                        <button type="button" onclick="changeQuantity('${product.id}', 1)">+</button>
-                    </div>
-                    <strong>${money(lineTotal)}</strong>
-                </div>
-            `;
-            }).join('');
-
-            document.getElementById('cartTotal').textContent = money(total);
-        }
-
-        function openOrderModal() {
-            if (!state.products.length) loadProducts();
-            renderCart();
-            openModal('orderModal');
-        }
-
-        async function createOrder(event) {
-            event.preventDefault();
-
-            if (!state.cart.length) {
-                toast('Add at least one product', 'error');
-                return;
-            }
-
-            const method = document.getElementById('paymentMethod').value;
-            const body = {
-                customerName: document.getElementById('customerName').value,
-                customerEmail: document.getElementById('customerEmail').value,
-                items: state.cart.map(item => ({ productId: item.productId, quantity: item.quantity })),
-                paymentMethod: method
-            };
-
-            try {
-                const order = await api('/api/orders', {
-                    method: 'POST',
-                    body: JSON.stringify(body)
-                });
-
-                state.cart = [];
-                closeModal('orderModal');
-                await refreshAll();
-
-                if (order.paymentMethod === 'Card') {
-                    openPaymentModal(order);
-                    return;
-                }
-
-                toast(`Order #${order.id.slice(0, 8)} created`);
-                openOrderDetails(order.id);
-            } catch (error) {
-                toast(error.message, 'error');
-            }
-        }
-
-        async function openPaymentModalById(orderId) {
-            try {
-                const order = await api(`/api/orders/${orderId}`);
-                openPaymentModal(order);
-            } catch (error) {
-                toast(error.message, 'error');
-            }
-        }
-
-        function openPaymentModal(order) {
-            state.paymentOrderId = order.id;
-            state.paymentOrder = order;
-            document.getElementById('paymentOrderShort').textContent = `#${order.id.slice(0, 8)}`;
-            document.getElementById('paymentAmount').textContent = money(order.totalAmount);
-            document.getElementById('paymentOrderStatus').textContent = order.status;
-            document.getElementById('paymentOrderStatus').className = `badge ${statusClass(order.status)}`;
-            document.getElementById('paymentCardNumber').value = '';
-            document.getElementById('paymentExpiry').value = '';
-            document.getElementById('paymentCvv').value = '';
-            openModal('paymentModal');
-        }
-
-        function normalizeCardNumber(value) {
-            return value.replace(/\D/g, '').slice(0, 16);
-        }
-
-        async function payOrder(event) {
-            event.preventDefault();
-            const button = document.getElementById('payButton');
-            const cardDigits = normalizeCardNumber(document.getElementById('paymentCardNumber').value);
-
-            if (cardDigits.length < 4) {
-                toast('Enter a valid demo card number', 'error');
-                return;
-            }
-
-            button.disabled = true;
-            button.textContent = 'Processing payment…';
-
-            try {
-                const order = await api(`/api/orders/${state.paymentOrderId}/pay`, {
-                    method: 'POST',
-                    body: JSON.stringify({ cardLast4: cardDigits.slice(-4) })
-                });
-
-                closeModal('paymentModal');
-                await refreshAll();
-                openOrderDetails(order.id);
-
-                if (order.status === 'Paid') {
-                    toast(`Payment approved · Order #${order.id.slice(0, 8)}`);
-                } else {
-                    toast('Payment was declined. Reserved stock was released.', 'error');
-                }
-            } catch (error) {
-                toast(error.message, 'error');
-            } finally {
-                button.disabled = false;
-                button.textContent = 'Pay now';
-            }
-        }
-
-        async function loadOrders() {
-            try {
-                const search = encodeURIComponent(document.getElementById('orderSearch')?.value || '');
-                const status = encodeURIComponent(document.getElementById('orderStatus')?.value || '');
-                state.orders = await api(`/api/orders?search=${search}&status=${status}`);
-                renderOrders();
-            } catch (error) {
-                toast(error.message, 'error');
-            }
-        }
-
-        function renderOrders() {
-            const root = document.getElementById('ordersTable');
-
-            if (!state.orders.length) {
-                root.innerHTML = '<div class="empty">No orders found.</div>';
-                return;
-            }
-
-            root.innerHTML = `
-            <table class="table">
-                <thead>
-                    <tr><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th><th>Payment</th><th>Created</th><th></th></tr>
-                </thead>
-                <tbody>
-                    ${state.orders.map(order => `
-                        <tr>
-                            <td><strong>#${order.id.slice(0, 8)}</strong></td>
-                            <td>${escapeHtml(order.customerName)}</td>
-                            <td>${order.itemCount}</td>
-                            <td>${money(order.totalAmount)}</td>
-                            <td><span class="badge ${statusClass(order.status)}">${escapeHtml(order.status)}</span></td>
-                            <td>${escapeHtml(order.paymentMethod || '—')}</td>
-                            <td>${formatDate(order.createdAt)}</td>
-                            <td><button class="secondary" onclick="openOrderDetails('${order.id}')">View</button></td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        `;
-        }
-
-        async function openOrderDetails(id) {
-            try {
-                const order = await api(`/api/orders/${id}`);
-                document.getElementById('orderDetails').innerHTML = orderDetailsHtml(order);
-                openModal('detailsModal');
-                startOrderPolling(order);
-            } catch (error) {
-                toast(error.message, 'error');
-            }
-        }
-
-        function orderDetailsHtml(order) {
-            const canPay = order.status === 'PendingPayment' && order.paymentMethod === 'Card';
-            const canCancel = order.status === 'PendingPayment';
-
-            return `
-            <div class="detail-grid">
-                <div>
-                    <div class="section">
-                        <div class="row-between">
-                            <div><div class="subtle">Order</div><h2 style="margin:4px 0">#${order.id.slice(0, 8)}</h2></div>
-                            <span class="badge ${statusClass(order.status)}">${escapeHtml(order.status)}</span>
-                        </div>
-                        <div class="item-line"><span class="subtle">Customer</span><span>${escapeHtml(order.customerName)}</span></div>
-                        <div class="item-line"><span class="subtle">Email</span><span>${escapeHtml(order.customerEmail)}</span></div>
-                        <div class="item-line"><span class="subtle">Payment</span><span>${escapeHtml(order.paymentMethod)}</span></div>
-                        <div class="item-line"><span class="subtle">Created</span><span>${formatDate(order.createdAt)}</span></div>
-                        ${order.items.map(item => `
-                            <div class="item-line"><span>${escapeHtml(item.productName)} × ${item.quantity}</span><strong>${money(item.lineTotal)}</strong></div>
-                        `).join('')}
-                        <div class="item-line"><strong>Total</strong><strong>${money(order.totalAmount)}</strong></div>
-                        <div class="row" style="margin-top:14px">
-                            ${canPay ? `<button class="primary" onclick="openPaymentModalById('${order.id}')">Pay now</button>` : ''}
-                            ${canCancel ? `<button class="danger" onclick="cancelOrder('${order.id}')">Cancel order</button>` : ''}
-                        </div>
-                    </div>
-                </div>
-                <div>
-                    <div class="section">
-                        <h3 style="margin-top:0">Order flow</h3>
-                        <div class="timeline">
-                            ${flowStep('Order created', 'Inventory reserved', order.status !== 'Cancelled')}
-                            ${flowStep('Payment', order.paymentMethod === 'Card' ? 'Waiting for card payment' : 'Cash on delivery', order.status === 'Paid' || order.paymentMethod === 'CashOnDelivery')}
-                            ${flowStep('Completed', order.status === 'Paid' ? 'Payment confirmed by Payment Service' : order.status === 'Cancelled' ? 'Payment declined or order cancelled' : 'Awaiting payment', order.status === 'Paid' || order.status === 'Cancelled')}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        }
-
-        function flowStep(title, description, done) {
-            return `
-            <div class="step ${done ? 'done' : ''}">
-                <div class="step-marker">✓</div>
-                <div><div class="title">${escapeHtml(title)}</div><div class="desc">${escapeHtml(description)}</div></div>
-            </div>
-        `;
-        }
-
-        async function cancelOrder(id) {
-            try {
-                await api(`/api/orders/${id}/cancel`, { method: 'POST' });
-                toast('Order cancelled');
-                await Promise.all([loadOrders(), loadProducts(), loadDashboard()]);
-                await openOrderDetails(id);
-            } catch (error) {
-                toast(error.message, 'error');
-            }
-        }
-
-        function startOrderPolling(order) {
-            clearTimeout(state.orderPoll);
-            if (order.status !== 'PendingPayment') return;
-
-            state.orderPoll = setTimeout(async () => {
-                try {
-                    const latest = await api(`/api/orders/${order.id}`);
-                    document.getElementById('orderDetails').innerHTML = orderDetailsHtml(latest);
-                    startOrderPolling(latest);
-                } catch {
-                }
-            }, 2500);
-        }
-
-        async function loadDashboard() {
-            try {
-                const orders = await api('/api/orders');
-                const paid = orders.filter(order => order.status === 'Paid');
-                const pending = orders.filter(order => order.status === 'PendingPayment');
-                const revenue = paid.reduce((sum, order) => sum + order.totalAmount, 0);
-
-                document.getElementById('statOrders').textContent = orders.length;
-                document.getElementById('statPaid').textContent = paid.length;
-                document.getElementById('statPending').textContent = pending.length;
-                document.getElementById('statRevenue').textContent = money(revenue);
-
-                document.getElementById('recentOrders').innerHTML = orders.length ? `
-                <table class="table">
-                    <thead><tr><th>Order</th><th>Customer</th><th>Total</th><th>Status</th><th>Created</th></tr></thead>
-                    <tbody>${orders.slice(0, 8).map(order => `
-                        <tr>
-                            <td><strong>#${order.id.slice(0, 8)}</strong></td>
-                            <td>${escapeHtml(order.customerName)}</td>
-                            <td>${money(order.totalAmount)}</td>
-                            <td><span class="badge ${statusClass(order.status)}">${escapeHtml(order.status)}</span></td>
-                            <td>${formatDate(order.createdAt)}</td>
-                        </tr>
-                    `).join('')}</tbody>
-                </table>
-            ` : '<div class="empty">No orders yet.</div>';
-            } catch (error) {
-                toast(error.message, 'error');
-            }
-        }
-
-        async function connectRealtime() {
-            try {
-                const connection = new signalR.HubConnectionBuilder()
-                    .withUrl(`${NOTIFY}/notifications`)
-                    .withAutomaticReconnect()
-                    .build();
-
-                connection.on('ReceivePaymentUpdate', data => {
-                    document.getElementById('lastEvent').textContent = `${data.status} · ${money(data.amount)}`;
-                    document.getElementById('lastEventTime').textContent = `Order #${String(data.orderId).slice(0, 8)} · ${formatDate(data.timestamp)}`;
-                    toast(`Payment event: ${data.status}`, data.status === 'Failed' ? 'error' : 'success');
-                    loadDashboard();
-                    loadOrders();
-                });
-
-                connection.onreconnecting(() => {
-                    document.getElementById('liveStatus').textContent = 'Reconnecting…';
-                });
-
-                connection.onreconnected(() => {
-                    document.getElementById('liveStatus').textContent = 'Realtime connected';
-                });
-
-                await connection.start();
-                document.getElementById('liveStatus').textContent = 'Realtime connected';
-            } catch {
-                document.getElementById('liveStatus').textContent = 'Realtime unavailable';
-                setTimeout(connectRealtime, 5000);
-            }
-        }
-
-        async function boot() {
-            showPage('dashboard');
-            await refreshAll();
-            await connectRealtime();
-        }
-
-        boot();
-    </script>
-
-    <div class="pig-easter-egg" id="pigEasterEgg" aria-label="Интерактивная свинья">
-        <button class="pig-easter-egg__button"
-                id="pigButton"
-                type="button"
-                aria-label="Нажать на свинью и услышать хрюканье"
-                aria-describedby="pigCounter">
-            <span class="pig-easter-egg__glow" aria-hidden="true"></span>
-
-            <img class="pig-easter-egg__image"
-                 src="/pig-widget/pig.svg"
-                 alt="Свинья"
-                 draggable="false">
-
-            <span class="pig-easter-egg__counter"
-                  id="pigCounter"
-                  aria-live="polite">Хрюков: 0</span>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-lockup">
+        <div class="brand-mark">OF</div>
+        <div>
+          <div class="brand-name">OrderFlow</div>
+          <div class="brand-caption">Order operations</div>
+        </div>
+      </div>
+
+      <nav class="nav" aria-label="Primary navigation">
+        <button class="nav-button active" data-page="dashboard" type="button">
+          <span class="nav-icon">⌂</span>
+          <span>Overview</span>
         </button>
+        <button class="nav-button" data-page="catalog" type="button">
+          <span class="nav-icon">◫</span>
+          <span>Catalog</span>
+        </button>
+        <button class="nav-button" data-page="orders" type="button">
+          <span class="nav-icon">↳</span>
+          <span>Orders</span>
+        </button>
+      </nav>
 
-        <audio id="pigSound" preload="auto">
-            <source src="/pig-widget/pig-oink.mp3" type="audio/mpeg">
-        </audio>
+      <div class="sidebar-footer">
+        <div class="system-card">
+          <div class="system-card-top">
+            <span class="status-indicator" id="liveIndicator"></span>
+            <span id="liveStatus">Realtime connected</span>
+          </div>
+          <div class="system-meta">Order Service · Payment Service · Kafka · Outbox · SignalR</div>
+        </div>
+        <div class="sidebar-note">Demo environment</div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow">OPERATIONS CONSOLE</div>
+          <h1 id="pageTitle">Overview</h1>
+          <p id="pageSubtitle">A live view of your order processing flow.</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="button button-ghost" type="button" onclick="refreshAll()">Refresh</button>
+          <button class="button button-primary" type="button" onclick="openOrderModal()">Create order</button>
+        </div>
+      </header>
+
+      <section id="page-dashboard" class="page">
+        <div class="hero-grid">
+          <section class="hero-card">
+            <div class="hero-badge">LIVE ORDER WORKFLOW</div>
+            <h2>Catalog, checkout and payment in one clean flow.</h2>
+            <p>Create an order, reserve inventory, complete the demo payment and watch the final state move through the system in real time.</p>
+            <div class="hero-actions">
+              <button class="button button-primary" type="button" onclick="showPage('catalog')">Open catalog</button>
+              <button class="button button-soft" type="button" onclick="showPage('orders')">Inspect orders</button>
+            </div>
+            <div class="flow-strip" aria-label="System flow">
+              <span>Catalog</span><i></i><span>Order</span><i></i><span>Payment</span><i></i><span>Outbox</span><i></i><span>Realtime</span>
+            </div>
+          </section>
+
+          <section class="event-card">
+            <div class="section-kicker">LATEST EVENT</div>
+            <div class="event-value" id="lastEvent">Waiting for payment events…</div>
+            <div class="event-meta" id="lastEventTime">No event received yet</div>
+            <div class="event-line"></div>
+            <div class="event-footer">
+              <span>SignalR</span>
+              <span class="event-live"><span class="mini-dot"></span>Live</span>
+            </div>
+          </section>
+        </div>
+
+        <div class="stats-grid">
+          <article class="stat-card">
+            <div class="stat-label">Total orders</div>
+            <div class="stat-value" id="statOrders">—</div>
+            <div class="stat-foot">All visible orders</div>
+          </article>
+          <article class="stat-card">
+            <div class="stat-label">Paid</div>
+            <div class="stat-value" id="statPaid">—</div>
+            <div class="stat-foot stat-good">Successful payments</div>
+          </article>
+          <article class="stat-card">
+            <div class="stat-label">Pending</div>
+            <div class="stat-value" id="statPending">—</div>
+            <div class="stat-foot stat-warn">Waiting for payment</div>
+          </article>
+          <article class="stat-card stat-accent">
+            <div class="stat-label">Revenue</div>
+            <div class="stat-value" id="statRevenue">—</div>
+            <div class="stat-foot">Paid orders only</div>
+          </article>
+        </div>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="section-kicker">RECENT ACTIVITY</div>
+              <h2>Latest orders</h2>
+            </div>
+            <button class="button button-ghost" type="button" onclick="showPage('orders')">View all</button>
+          </div>
+          <div class="table-wrap" id="recentOrders"></div>
+        </section>
+      </section>
+
+      <section id="page-catalog" class="page hidden">
+        <section class="panel">
+          <div class="panel-header panel-header-stacked-mobile">
+            <div>
+              <div class="section-kicker">INVENTORY</div>
+              <h2>Product catalog</h2>
+            </div>
+            <div class="toolbar">
+              <input id="productSearch" class="control" placeholder="Search products" autocomplete="off" oninput="renderProducts()" />
+              <button class="button button-primary" type="button" onclick="openProductModal()">Add product</button>
+            </div>
+          </div>
+          <div class="product-grid" id="productGrid"></div>
+        </section>
+      </section>
+
+      <section id="page-orders" class="page hidden">
+        <section class="panel">
+          <div class="panel-header panel-header-stacked-mobile">
+            <div>
+              <div class="section-kicker">ORDER MANAGEMENT</div>
+              <h2>Orders</h2>
+            </div>
+            <div class="toolbar">
+              <input id="orderSearch" class="control" placeholder="Search customer or ID" autocomplete="off" oninput="loadOrders()" />
+              <select id="orderStatus" class="control" onchange="loadOrders()">
+                <option value="">All statuses</option>
+                <option value="PendingPayment">Pending payment</option>
+                <option value="Paid">Paid</option>
+                <option value="Cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrap" id="ordersTable"></div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div id="productModal" class="modal" aria-hidden="true">
+    <div class="dialog">
+      <div class="dialog-header">
+        <div>
+          <div class="section-kicker">CATALOG</div>
+          <h3 id="productModalTitle">New product</h3>
+        </div>
+        <button class="icon-button" type="button" aria-label="Close" onclick="closeModal('productModal')">×</button>
+      </div>
+      <form class="form" onsubmit="saveProduct(event)">
+        <input type="hidden" id="productId" />
+        <label>Name<input id="productName" required maxlength="200" /></label>
+        <label>Description<textarea id="productDescription" maxlength="1000"></textarea></label>
+        <div class="form-grid">
+          <label>Price<input id="productPrice" required type="number" min="0.01" step="0.01" /></label>
+          <label>Stock<input id="productStock" required type="number" min="0" step="1" /></label>
+        </div>
+        <label class="checkbox-row"><input id="productActive" type="checkbox" checked /> Active</label>
+        <div class="dialog-actions">
+          <button class="button button-ghost" type="button" onclick="closeModal('productModal')">Cancel</button>
+          <button class="button button-primary" type="submit">Save product</button>
+        </div>
+      </form>
     </div>
+  </div>
 
-    <script src="/pig-widget/pig-widget.js"></script>
+  <div id="orderModal" class="modal" aria-hidden="true">
+    <div class="dialog dialog-wide">
+      <div class="dialog-header">
+        <div>
+          <div class="section-kicker">CHECKOUT</div>
+          <h3>Create order</h3>
+        </div>
+        <button class="icon-button" type="button" aria-label="Close" onclick="closeModal('orderModal')">×</button>
+      </div>
 
+      <form class="form" onsubmit="createOrder(event)">
+        <div class="form-grid">
+          <label>Customer name<input id="customerName" required maxlength="200" /></label>
+          <label>Email<input id="customerEmail" required type="email" maxlength="320" /></label>
+        </div>
+
+        <div class="inner-panel">
+          <div class="inner-panel-header">
+            <div>
+              <div class="section-kicker">CART</div>
+              <h4>Selected items</h4>
+            </div>
+            <span id="cartTotal" class="price">€0.00</span>
+          </div>
+          <div id="cartItems" class="cart"></div>
+        </div>
+
+        <div class="inner-panel">
+          <div class="inner-panel-header">
+            <div>
+              <div class="section-kicker">PAYMENT</div>
+              <h4>Method</h4>
+            </div>
+            <span class="muted">Payment runs after order creation</span>
+          </div>
+          <select id="paymentMethod" class="control control-full">
+            <option value="Card">Card</option>
+            <option value="CashOnDelivery">Cash on delivery</option>
+          </select>
+        </div>
+
+        <div class="dialog-footer-row">
+          <span class="muted">Only the card's last four digits are sent to the payment service.</span>
+          <button class="button button-primary" type="submit">Continue to payment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="paymentModal" class="modal" aria-hidden="true">
+    <div class="dialog">
+      <div class="dialog-header">
+        <div>
+          <div class="section-kicker">DEMO GATEWAY</div>
+          <h3>Pay order <span id="paymentOrderShort"></span></h3>
+        </div>
+        <button class="icon-button" type="button" aria-label="Close" onclick="closeModal('paymentModal')">×</button>
+      </div>
+
+      <div class="payment-summary">
+        <div>
+          <span>Amount</span>
+          <strong id="paymentAmount">€0.00</strong>
+        </div>
+        <div>
+          <span>Order status</span>
+          <span id="paymentOrderStatus" class="badge pending">Pending payment</span>
+        </div>
+      </div>
+
+      <form class="form" onsubmit="payOrder(event)">
+        <label>Card number<input id="paymentCardNumber" inputmode="numeric" autocomplete="cc-number" maxlength="19" placeholder="4242 4242 4242 4242" required /></label>
+        <div class="form-grid">
+          <label>Expiry<input id="paymentExpiry" inputmode="numeric" maxlength="5" placeholder="12/30" required /></label>
+          <label>CVV<input id="paymentCvv" inputmode="numeric" maxlength="4" placeholder="123" required /></label>
+        </div>
+        <div class="demo-note">
+          <div class="demo-note-title">Demo payment</div>
+          <div>Use any four-digit ending to approve the payment. Use 0000 to simulate a decline.</div>
+        </div>
+        <button id="payButton" class="button button-primary button-full" type="submit">Pay now</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="detailsModal" class="modal" aria-hidden="true">
+    <div class="dialog dialog-wide">
+      <div class="dialog-header">
+        <div>
+          <div class="section-kicker">ORDER</div>
+          <h3>Order details</h3>
+        </div>
+        <button class="icon-button" type="button" aria-label="Close" onclick="closeModal('detailsModal')">×</button>
+      </div>
+      <div id="orderDetails"></div>
+    </div>
+  </div>
+
+  <div id="toasts" class="toast-wrap" aria-live="polite" aria-atomic="true"></div>
+
+  <div class="pig-widget" id="pigWidget">
+    <button class="pig-button" id="pigButton" type="button" aria-label="Click the pig to hear an oink" aria-describedby="pigCounter">
+      <span class="pig-glow" aria-hidden="true"></span>
+      <img src="/pig-widget/pig.svg" alt="Pig" class="pig-image" draggable="false" />
+      <span class="pig-counter" id="pigCounter" aria-live="polite">Oinks: 0</span>
+    </button>
+    <audio id="pigSound" preload="auto">
+      <source src="/pig-widget/pig-oink.mp3" type="audio/mpeg" />
+    </audio>
+  </div>
+
+  <script src="/pig-widget/pig-widget.js"></script>
+  <script src="/js/app.js"></script>
 </body>
 </html>
