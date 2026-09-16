@@ -1,13 +1,48 @@
 namespace OrderService.DataAccess.Entities;
 
-public class OrderItem
+public sealed class OrderItem
 {
-    public Guid Id { get; set; }
-    public Guid OrderId { get; set; }
-    public Guid ProductId { get; set; }
-    public string ProductName { get; set; } = string.Empty;
-    public decimal UnitPrice { get; set; }
-    public int Quantity { get; set; }
-    public decimal LineTotal { get; set; }
-    public Order Order { get; set; } = null!;
+    private OrderItem()
+    {
+    }
+
+    private OrderItem(
+        Guid id,
+        Guid productId,
+        string productName,
+        decimal unitPrice,
+        int quantity,
+        decimal lineTotal)
+    {
+        Id = id;
+        ProductId = productId;
+        ProductName = productName;
+        UnitPrice = unitPrice;
+        Quantity = quantity;
+        LineTotal = lineTotal;
+    }
+
+    public Guid Id { get; private set; }
+    public Guid OrderId { get; private set; }
+    public Guid ProductId { get; private set; }
+    public string ProductName { get; private set; } = string.Empty;
+    public decimal UnitPrice { get; private set; }
+    public int Quantity { get; private set; }
+    public decimal LineTotal { get; private set; }
+    public Order Order { get; private set; } = null!;
+
+    public static OrderItem Create(
+        Guid productId,
+        string productName,
+        decimal unitPrice,
+        int quantity)
+    {
+        return new OrderItem(
+            Guid.NewGuid(),
+            productId,
+            productName,
+            unitPrice,
+            quantity,
+            unitPrice * quantity);
+    }
 }
